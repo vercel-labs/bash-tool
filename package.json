@@ -45,12 +45,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vercel/bash-tool.git"
+    "url": "git+https://github.com/vercel-labs/bash-tool.git"
   },
   "bugs": {
-    "url": "https://github.com/vercel/bash-tool/issues"
+    "url": "https://github.com/vercel-labs/bash-tool/issues"
   },
-  "homepage": "https://github.com/vercel/bash-tool#readme",
+  "homepage": "https://github.com/vercel-labs/bash-tool#readme",
   "engines": {
     "node": ">=18"
   },
