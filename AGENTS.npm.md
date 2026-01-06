@@ -73,12 +73,12 @@ const { tools } = await createBashTool({ sandbox: vm });
 import { Sandbox } from "@vercel/sandbox";
 
 // First invocation: create and store sandboxId
-const sandbox = await Sandbox.create();
-const sandboxId = sandbox.sandboxId; // store this
+const newSandbox = await Sandbox.create();
+const sandboxId = newSandbox.sandboxId; // store this
 
 // Later invocations: reconnect by ID
-const sandbox = await Sandbox.get({ sandboxId });
-const { tools } = await createBashTool({ sandbox });
+const existingSandbox = await Sandbox.get({ sandboxId });
+const { tools } = await createBashTool({ sandbox: existingSandbox });
 // Previous files and state preserved
 ```
 
@@ -110,7 +110,9 @@ const { bash } = await createBashTool({
 ## Error Handling
 
 ```typescript
-const result = await tools.bash.execute({ command: "ls /nonexistent" }, opts);
+const { tools, sandbox } = await createBashTool();
+
+const result = await tools.bash.execute({ command: "ls /nonexistent" });
 if (result.exitCode !== 0) {
   console.error("Command failed:", result.stderr);
 }

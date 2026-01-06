@@ -69,13 +69,13 @@ Use `Sandbox.get` to reconnect to an existing sandbox by ID:
 import { Sandbox } from "@vercel/sandbox";
 
 // First invocation: create sandbox and store the ID
-const sandbox = await Sandbox.create();
-const sandboxId = sandbox.sandboxId;
+const newSandbox = await Sandbox.create();
+const sandboxId = newSandbox.sandboxId;
 // Store sandboxId in database, session, or return to client
 
 // Subsequent invocations: reconnect to existing sandbox
-const sandbox = await Sandbox.get({ sandboxId });
-const { tools } = await createBashTool({ sandbox });
+const existingSandbox = await Sandbox.get({ sandboxId });
+const { tools } = await createBashTool({ sandbox: existingSandbox });
 // All previous files and state are preserved
 ```
 
@@ -109,13 +109,15 @@ import { createBashTool, Sandbox } from "bash-tool";
 
 const customSandbox: Sandbox = {
   async executeCommand(command) {
-    // Return { stdout, stderr, exitCode }
+    // Your implementation here
+    return { stdout: "", stderr: "", exitCode: 0 };
   },
   async readFile(path) {
-    // Return file contents
+    // Your implementation here
+    return "";
   },
   async writeFile(path, content) {
-    // Write file
+    // Your implementation here
   },
 };
 
