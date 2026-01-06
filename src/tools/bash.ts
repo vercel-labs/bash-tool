@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import type { CommandResult, Sandbox } from "../types.js";
+import type { Sandbox } from "../types.js";
 
 const bashSchema = z.object({
   command: z.string().describe("The bash command to execute"),
@@ -61,8 +61,8 @@ export function createBashExecuteTool(options: CreateBashToolOptions) {
 
   return tool({
     description: generateDescription(options),
-    parameters: bashSchema,
-    execute: async ({ command }): Promise<CommandResult> => {
+    inputSchema: bashSchema,
+    execute: async ({ command }) => {
       onCall?.("bash", { command });
       return sandbox.executeCommand(command);
     },

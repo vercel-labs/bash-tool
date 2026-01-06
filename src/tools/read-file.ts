@@ -16,8 +16,8 @@ export function createReadFileTool(options: CreateReadFileToolOptions) {
 
   return tool({
     description: "Read the contents of a file from the sandbox.",
-    parameters: readFileSchema,
-    execute: async ({ path }): Promise<{ content: string }> => {
+    inputSchema: readFileSchema,
+    execute: async ({ path }) => {
       onCall?.("readFile", { path });
       const content = await sandbox.readFile(path);
       return { content };

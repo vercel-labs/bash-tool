@@ -1,6 +1,7 @@
 import type { ToolExecutionOptions } from "ai";
-import { describe, expect, it } from "vitest";
+import { assert, describe, expect, it } from "vitest";
 import { createBashTool } from "./tool.js";
+import type { CommandResult } from "./types.js";
 
 // AI SDK tool execute requires (args, options) - we provide test options
 const opts: ToolExecutionOptions = { toolCallId: "test", messages: [] };
@@ -26,7 +27,11 @@ describe("createBashTool integration", () => {
         files: testFiles,
       });
 
-      const result = await tools.bash.execute({ command: "ls -la" }, opts);
+      assert(tools.bash.execute, "bash.execute should be defined");
+      const result = (await tools.bash.execute(
+        { command: "ls -la" },
+        opts,
+      )) as CommandResult;
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("src");
@@ -39,7 +44,11 @@ describe("createBashTool integration", () => {
         files: testFiles,
       });
 
-      const result = await tools.bash.execute({ command: "ls src" }, opts);
+      assert(tools.bash.execute, "bash.execute should be defined");
+      const result = (await tools.bash.execute(
+        { command: "ls src" },
+        opts,
+      )) as CommandResult;
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("index.ts");
@@ -53,10 +62,11 @@ describe("createBashTool integration", () => {
         files: testFiles,
       });
 
-      const result = await tools.bash.execute(
+      assert(tools.bash.execute, "bash.execute should be defined");
+      const result = (await tools.bash.execute(
         { command: "find . -name '*.ts'" },
         opts,
-      );
+      )) as CommandResult;
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("index.ts");
@@ -70,10 +80,11 @@ describe("createBashTool integration", () => {
         files: testFiles,
       });
 
-      const result = await tools.bash.execute(
+      assert(tools.bash.execute, "bash.execute should be defined");
+      const result = (await tools.bash.execute(
         { command: "find . -name '*.json'" },
         opts,
-      );
+      )) as CommandResult;
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("package.json");
@@ -87,10 +98,11 @@ describe("createBashTool integration", () => {
         files: testFiles,
       });
 
-      const result = await tools.bash.execute(
+      assert(tools.bash.execute, "bash.execute should be defined");
+      const result = (await tools.bash.execute(
         { command: "grep -r 'export' ." },
         opts,
-      );
+      )) as CommandResult;
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("index.ts");
@@ -103,10 +115,11 @@ describe("createBashTool integration", () => {
         files: testFiles,
       });
 
-      const result = await tools.bash.execute(
+      assert(tools.bash.execute, "bash.execute should be defined");
+      const result = (await tools.bash.execute(
         { command: "grep -r 'hello' ." },
         opts,
-      );
+      )) as CommandResult;
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("index.ts");
@@ -120,10 +133,11 @@ describe("createBashTool integration", () => {
         files: testFiles,
       });
 
-      const result = await tools.bash.execute(
+      assert(tools.bash.execute, "bash.execute should be defined");
+      const result = (await tools.bash.execute(
         { command: "cat src/index.ts" },
         opts,
-      );
+      )) as CommandResult;
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toBe('export const hello = "world";');
@@ -134,10 +148,11 @@ describe("createBashTool integration", () => {
         files: testFiles,
       });
 
-      const result = await tools.bash.execute(
+      assert(tools.bash.execute, "bash.execute should be defined");
+      const result = (await tools.bash.execute(
         { command: "cat package.json" },
         opts,
-      );
+      )) as CommandResult;
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('"name": "test-project"');
@@ -152,7 +167,11 @@ describe("createBashTool integration", () => {
         destination: "/workspace",
       });
 
-      const result = await tools.bash.execute({ command: "pwd" }, opts);
+      assert(tools.bash.execute, "bash.execute should be defined");
+      const result = (await tools.bash.execute(
+        { command: "pwd" },
+        opts,
+      )) as CommandResult;
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout.trim()).toBe("/workspace");
@@ -164,7 +183,11 @@ describe("createBashTool integration", () => {
         destination: "/home/user/project",
       });
 
-      const result = await tools.bash.execute({ command: "pwd" }, opts);
+      assert(tools.bash.execute, "bash.execute should be defined");
+      const result = (await tools.bash.execute(
+        { command: "pwd" },
+        opts,
+      )) as CommandResult;
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout.trim()).toBe("/home/user/project");
@@ -177,10 +200,11 @@ describe("createBashTool integration", () => {
         files: testFiles,
       });
 
-      const result = await tools.readFile.execute(
+      assert(tools.readFile.execute, "readFile.execute should be defined");
+      const result = (await tools.readFile.execute(
         { path: "/workspace/src/index.ts" },
         opts,
-      );
+      )) as { content: string };
 
       expect(result.content).toBe('export const hello = "world";');
     });
@@ -192,15 +216,18 @@ describe("createBashTool integration", () => {
         files: testFiles,
       });
 
+      assert(tools.writeFile.execute, "writeFile.execute should be defined");
+      assert(tools.bash.execute, "bash.execute should be defined");
+
       await tools.writeFile.execute(
         { path: "/workspace/newfile.txt", content: "Hello, World!" },
         opts,
       );
 
-      const result = await tools.bash.execute(
+      const result = (await tools.bash.execute(
         { command: "cat newfile.txt" },
         opts,
-      );
+      )) as CommandResult;
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout.trim()).toBe("Hello, World!");

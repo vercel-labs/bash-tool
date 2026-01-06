@@ -18,8 +18,8 @@ export function createWriteFileTool(options: CreateWriteFileToolOptions) {
   return tool({
     description:
       "Write content to a file in the sandbox. Creates parent directories if needed.",
-    parameters: writeFileSchema,
-    execute: async ({ path, content }): Promise<{ success: boolean }> => {
+    inputSchema: writeFileSchema,
+    execute: async ({ path, content }) => {
       onCall?.("writeFile", { path, content });
       await sandbox.writeFile(path, content);
       return { success: true };

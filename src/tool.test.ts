@@ -1,5 +1,6 @@
 import type { ToolExecutionOptions } from "ai";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { assert, beforeEach, describe, expect, it, vi } from "vitest";
+import type { CommandResult } from "./types.js";
 
 // AI SDK tool execute requires (args, options) - we provide test options
 const opts: ToolExecutionOptions = { toolCallId: "test", messages: [] };
@@ -8,7 +9,7 @@ const opts: ToolExecutionOptions = { toolCallId: "test", messages: [] };
 vi.mock("ai", () => ({
   tool: vi.fn((config) => ({
     description: config.description,
-    parameters: config.parameters,
+    inputSchema: config.inputSchema,
     execute: config.execute,
   })),
 }));
@@ -123,7 +124,11 @@ describe("createBashTool", () => {
       files: { "test.txt": "hello world" },
     });
 
-    const result = await tools.bash.execute({ command: "ls" }, opts);
+    assert(tools.bash.execute, "bash.execute should be defined");
+    const result = (await tools.bash.execute(
+      { command: "ls" },
+      opts,
+    )) as CommandResult;
     expect(result.exitCode).toBe(0);
   });
 
@@ -132,20 +137,22 @@ describe("createBashTool", () => {
       files: { "test.txt": "hello world" },
     });
 
-    const result = await tools.readFile.execute(
+    assert(tools.readFile.execute, "readFile.execute should be defined");
+    const result = (await tools.readFile.execute(
       { path: "/workspace/test.txt" },
       opts,
-    );
+    )) as { content: string };
     expect(result.content).toBe("hello world");
   });
 
   it("writeFile tool writes files", async () => {
     const { tools } = await createBashTool();
 
-    const result = await tools.writeFile.execute(
+    assert(tools.writeFile.execute, "writeFile.execute should be defined");
+    const result = (await tools.writeFile.execute(
       { path: "/workspace/new-file.txt", content: "new content" },
       opts,
-    );
+    )) as { success: boolean };
 
     expect(result.success).toBe(true);
   });
@@ -156,6 +163,9 @@ describe("createBashTool", () => {
       onCall,
       files: { "test.txt": "hello" },
     });
+
+    assert(tools.bash.execute, "bash.execute should be defined");
+    assert(tools.readFile.execute, "readFile.execute should be defined");
 
     await tools.bash.execute({ command: "ls" }, opts);
     expect(onCall).toHaveBeenCalledWith("bash", { command: "ls" });
@@ -190,7 +200,11 @@ describe("createBashTool", () => {
     );
 
     // Tools should use custom sandbox
-    const result = await tools.bash.execute({ command: "ls" }, opts);
+    assert(tools.bash.execute, "bash.execute should be defined");
+    const result = (await tools.bash.execute(
+      { command: "ls" },
+      opts,
+    )) as CommandResult;
     expect(result.stdout).toBe("custom");
   });
 });
