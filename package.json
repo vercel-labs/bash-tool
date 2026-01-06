@@ -21,7 +21,7 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && sed '1,/^-->/d' AGENTS.npm.md > dist/AGENTS.md",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run",

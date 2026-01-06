@@ -64,6 +64,24 @@ const { tools } = await createBashTool({
 });
 ```
 
+### Persistent sandbox across serverless invocations
+
+Use `Sandbox.get` to reconnect to an existing sandbox by ID:
+
+```typescript
+import { Sandbox } from "@vercel/sandbox";
+
+// First invocation: create sandbox and store the ID
+const sandbox = await Sandbox.create();
+const sandboxId = sandbox.sandboxId;
+// Store sandboxId in database, session, or return to client
+
+// Subsequent invocations: reconnect to existing sandbox
+const sandbox = await Sandbox.get({ sandboxId });
+const { tools } = await createBashTool({ sandbox });
+// All previous files and state are preserved
+```
+
 ### Use a custom just-bash instance
 
 ```typescript
@@ -105,6 +123,14 @@ const customSandbox: Sandbox = {
 };
 
 const { tools } = await createBashTool({ sandbox: customSandbox });
+```
+
+## AI Agent Instructions
+
+For AI agents working with bash-tool, additional guidance is available in `AGENTS.md`:
+
+```bash
+cat node_modules/bash-tool/dist/AGENTS.md
 ```
 
 ## License
