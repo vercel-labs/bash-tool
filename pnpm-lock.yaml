@@ -10,7 +10,7 @@ dependencies:
     version: 3.3.3
   just-bash:
     specifier: '*'
-    version: 1.5.2(ai@4.3.19)(zod@3.25.76)
+    version: 1.5.4(ai@4.3.19)(zod@3.25.76)
   zod:
     specifier: ^3.23.8
     version: 3.25.76
@@ -1214,8 +1214,8 @@ packages:
     resolution: {integrity: sha512-ekDrAGso79Cvf+dtm+mL8OBI2bmAOt3gssYs833De/C9NmIpWDWyUO4zPgB5x2/OhY366dkhgfPMYfwZF7yOZA==}
     dev: true
 
-  /just-bash@1.5.2(ai@4.3.19)(zod@3.25.76):
-    resolution: {integrity: sha512-M2t+TUf8k9/CD43oK2pjVde11JvMYNpHwe/O0OCDPCdFovJzk/3HiefVIO/5UHLaeUEMqInpNn/cVn+Hl20NDw==}
+  /just-bash@1.5.4(ai@4.3.19)(zod@3.25.76):
+    resolution: {integrity: sha512-jxT40dBPXByfdZRlhZcLEiofmleWuw257oQk1OZvI95+a9cQwGQ4k2Yty2bjWKdfbaphDetZmG+U1oTm1hAf2g==}
     hasBin: true
     peerDependencies:
       ai: ^6.0.0
