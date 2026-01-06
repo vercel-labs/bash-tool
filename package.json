@@ -29,7 +29,7 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "knip": "knip",
-    "validate": "pnpm run lint && pnpm run knip && pnpm run typecheck && pnpm run test",
+    "validate": "pnpm run lint && pnpm run knip && pnpm run typecheck && pnpm run test:run",
     "prepublishOnly": "pnpm run validate && pnpm run build"
   },
   "keywords": [
