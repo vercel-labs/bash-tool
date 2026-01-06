@@ -50,7 +50,7 @@ pnpm validate       # Run all checks (lint, knip, typecheck, test)
 
 3. **Contextual instructions**: The bash tool generates LLM instructions that include the working directory and list of available files.
 
-4. **Sandbox abstraction**: Users can provide their own Sandbox implementation or use the built-in adapters.
+4. **Sandbox auto-detection**: The `sandbox` parameter auto-detects both `@vercel/sandbox` instances (checks for `shells` and `kill`) and just-bash `Bash` instances (checks for `exec` method). Users can also provide a custom `Sandbox` implementation.
 
 ## Testing
 

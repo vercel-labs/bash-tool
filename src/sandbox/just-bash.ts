@@ -1,4 +1,4 @@
-import type { CommandResult, Sandbox } from "../types.js";
+import type { CommandResult, JustBashInstance, Sandbox } from "../types.js";
 
 /**
  * Options for creating a just-bash sandbox.
@@ -60,6 +60,61 @@ export async function createJustBashSandbox(
 
       // Write file using heredoc to handle special characters
       const result = await bashEnv.exec(
+        `cat > "${filePath}" << 'BASH_TOOL_EOF'\n${content}\nBASH_TOOL_EOF`,
+      );
+
+      if (result.exitCode !== 0) {
+        throw new Error(`Failed to write file: ${filePath}\n${result.stderr}`);
+      }
+    },
+
+    async stop(): Promise<void> {
+      // just-bash has no cleanup needed
+    },
+  };
+}
+
+/**
+ * Check if an object is a just-bash Bash instance using duck-typing.
+ */
+export function isJustBash(obj: unknown): obj is JustBashInstance {
+  if (!obj || typeof obj !== "object") return false;
+  const candidate = obj as Record<string, unknown>;
+  // just-bash Bash class has an exec method
+  return typeof candidate.exec === "function";
+}
+
+/**
+ * Wraps a just-bash Bash instance to conform to our Sandbox interface.
+ */
+export function wrapJustBash(bashInstance: JustBashInstance): Sandbox {
+  return {
+    async executeCommand(command: string): Promise<CommandResult> {
+      const result = await bashInstance.exec(command);
+      return {
+        stdout: result.stdout,
+        stderr: result.stderr,
+        exitCode: result.exitCode,
+      };
+    },
+
+    async readFile(filePath: string): Promise<string> {
+      const result = await bashInstance.exec(`cat "${filePath}"`);
+      if (result.exitCode !== 0) {
+        throw new Error(`Failed to read file: ${filePath}\n${result.stderr}`);
+      }
+      return result.stdout;
+    },
+
+    async writeFile(filePath: string, content: string): Promise<void> {
+      // Ensure parent directory exists
+      const dir = filePath.substring(0, filePath.lastIndexOf("/"));
+      if (dir) {
+        await bashInstance.exec(`mkdir -p "${dir}"`);
+      }
+
+      // Write file using heredoc to handle special characters
+      const result = await bashInstance.exec(
         `cat > "${filePath}" << 'BASH_TOOL_EOF'\n${content}\nBASH_TOOL_EOF`,
       );
 

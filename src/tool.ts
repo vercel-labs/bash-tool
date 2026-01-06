@@ -1,6 +1,10 @@
 import path from "node:path";
 import { loadFiles } from "./files/loader.js";
-import { createJustBashSandbox } from "./sandbox/just-bash.js";
+import {
+  createJustBashSandbox,
+  isJustBash,
+  wrapJustBash,
+} from "./sandbox/just-bash.js";
 import { isVercelSandbox, wrapVercelSandbox } from "./sandbox/vercel.js";
 import { createBashExecuteTool } from "./tools/bash.js";
 import { createReadFileTool } from "./tools/read-file.js";
@@ -57,8 +61,11 @@ export async function createBashTool(
   let sandbox: Sandbox;
 
   if (options.sandbox) {
+    // Check @vercel/sandbox first (more specific check)
     if (isVercelSandbox(options.sandbox)) {
       sandbox = wrapVercelSandbox(options.sandbox);
+    } else if (isJustBash(options.sandbox)) {
+      sandbox = wrapJustBash(options.sandbox);
     } else {
       sandbox = options.sandbox as Sandbox;
     }
@@ -78,14 +85,16 @@ export async function createBashTool(
   // 4. Create tools
   const fileList = Object.keys(loadedFiles);
 
+  const bash = createBashExecuteTool({
+    sandbox,
+    cwd: destination,
+    files: fileList,
+    extraInstructions: options.extraInstructions,
+    onCall: options.onCall,
+  });
+
   const tools = {
-    bash: createBashExecuteTool({
-      sandbox,
-      cwd: destination,
-      files: fileList,
-      extraInstructions: options.extraInstructions,
-      onCall: options.onCall,
-    }),
+    bash,
     readFile: createReadFileTool({
       sandbox,
       onCall: options.onCall,
@@ -96,5 +105,5 @@ export async function createBashTool(
     }),
   };
 
-  return { tools, sandbox };
+  return { bash, tools, sandbox };
 }

@@ -42,9 +42,10 @@ export interface CreateBashToolOptions {
 
   /**
    * Override the default just-bash sandbox.
-   * Accepts a @vercel/sandbox instance OR any object implementing Sandbox.
+   * Accepts a @vercel/sandbox instance, just-bash Bash instance,
+   * or any object implementing Sandbox.
    */
-  sandbox?: Sandbox | VercelSandboxInstance;
+  sandbox?: Sandbox | VercelSandboxInstance | JustBashInstance;
 
   /**
    * Additional instructions to append to tool descriptions.
@@ -63,6 +64,9 @@ import type { createReadFileTool } from "./tools/read-file.js";
 import type { createWriteFileTool } from "./tools/write-file.js";
 
 export interface BashToolkit {
+  /** The bash tool for direct use */
+  bash: ReturnType<typeof createBashExecuteTool>;
+  /** All tools (bash, readFile, writeFile) for passing to AI SDK */
   tools: {
     bash: ReturnType<typeof createBashExecuteTool>;
     readFile: ReturnType<typeof createReadFileTool>;
@@ -78,5 +82,18 @@ export interface BashToolkit {
 export interface VercelSandboxInstance {
   shells?: unknown;
   kill?: () => Promise<void>;
+  [key: string]: unknown;
+}
+
+/**
+ * Duck-typed just-bash Bash instance.
+ * We detect this by checking for the exec method.
+ */
+export interface JustBashInstance {
+  exec: (command: string) => Promise<{
+    stdout: string;
+    stderr: string;
+    exitCode: number;
+  }>;
   [key: string]: unknown;
 }

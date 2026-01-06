@@ -16,17 +16,25 @@ For full VM support, install `@vercel/sandbox` or another sandbox product instea
 import { createBashTool } from "bash-tool";
 import { generateText } from "ai";
 
-const { tools, sandbox } = await createBashTool({
+const { bash, tools, sandbox } = await createBashTool({
   files: {
     "src/index.ts": "export const hello = 'world';",
     "package.json": '{"name": "my-project"}',
   },
 });
 
+// Use just the bash tool
 const result = await generateText({
   model: yourModel,
-  tools,
+  tools: { bash },
   prompt: "List all TypeScript files",
+});
+
+// Or use all tools (bash, readFile, writeFile)
+const result2 = await generateText({
+  model: yourModel,
+  tools,
+  prompt: "Read the package.json file",
 });
 
 await sandbox.stop();
@@ -48,8 +56,8 @@ interface CreateBashToolOptions {
     include?: string; // glob pattern, default "**/*"
   };
 
-  // Custom sandbox (Sandbox interface or @vercel/sandbox instance)
-  sandbox?: Sandbox | VercelSandboxInstance;
+  // Custom sandbox (just-bash, @vercel/sandbox, or Sandbox interface)
+  sandbox?: Sandbox | VercelSandboxInstance | JustBashInstance;
 
   // Additional instructions for LLM
   extraInstructions?: string;
@@ -59,9 +67,33 @@ interface CreateBashToolOptions {
 }
 ```
 
+## Using a custom just-bash
+
+Pass a `Bash` instance directly:
+
+```typescript
+import { createBashTool } from "bash-tool";
+import { Bash } from "just-bash";
+
+const bash = new Bash({ cwd: "/workspace" });
+const { tools } = await createBashTool({ sandbox: bash });
+```
+
+## Using @vercel/sandbox
+
+Pass a sandbox instance directly:
+
+```typescript
+import { createBashTool } from "bash-tool";
+import { Sandbox } from "@vercel/sandbox";
+
+const sandbox = await Sandbox.create();
+const { tools } = await createBashTool({ sandbox });
+```
+
 ## Custom Sandbox
 
-Implement the `Sandbox` interface to use your own execution environment:
+Implement the `Sandbox` interface for other execution environments:
 
 ```typescript
 import { createBashTool, Sandbox } from "bash-tool";
