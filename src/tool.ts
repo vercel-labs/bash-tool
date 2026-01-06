@@ -90,19 +90,14 @@ export async function createBashTool(
     cwd: destination,
     files: fileList,
     extraInstructions: options.extraInstructions,
-    onCall: options.onCall,
+    onBeforeBashCall: options.onBeforeBashCall,
+    onAfterBashCall: options.onAfterBashCall,
   });
 
   const tools = {
     bash,
-    readFile: createReadFileTool({
-      sandbox,
-      onCall: options.onCall,
-    }),
-    writeFile: createWriteFileTool({
-      sandbox,
-      onCall: options.onCall,
-    }),
+    readFile: createReadFileTool({ sandbox }),
+    writeFile: createWriteFileTool({ sandbox }),
   };
 
   return { bash, tools, sandbox };

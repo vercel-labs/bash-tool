@@ -82,11 +82,18 @@ const { tools } = await createBashTool({ sandbox: existingSandbox });
 // Previous files and state preserved
 ```
 
-### Track tool invocations
+### Intercept bash commands
 
 ```typescript
 const { tools } = await createBashTool({
-  onCall: (toolName, args) => console.log(toolName, args),
+  onBeforeBashCall: ({ command }) => {
+    console.log("Running:", command);
+    // Return modified command or undefined to proceed unchanged
+  },
+  onAfterBashCall: ({ command, result }) => {
+    console.log(`Exit: ${result.exitCode}`);
+    // Return modified result or undefined to proceed unchanged
+  },
 });
 ```
 

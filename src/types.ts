@@ -25,6 +25,42 @@ export interface JustBashInstance {
   [key: string]: unknown;
 }
 
+/**
+ * Input for onBeforeBashCall callback.
+ */
+export interface BeforeBashCallInput {
+  /** The command that will be executed */
+  command: string;
+}
+
+/**
+ * Output from onBeforeBashCall callback.
+ * Return undefined or the original input to proceed unchanged.
+ */
+export interface BeforeBashCallOutput {
+  /** The (potentially modified) command to execute */
+  command: string;
+}
+
+/**
+ * Input for onAfterBashCall callback.
+ */
+export interface AfterBashCallInput {
+  /** The command that was executed */
+  command: string;
+  /** The result from executing the command */
+  result: CommandResult;
+}
+
+/**
+ * Output from onAfterBashCall callback.
+ * Return undefined or the original result to proceed unchanged.
+ */
+export interface AfterBashCallOutput {
+  /** The (potentially modified) result */
+  result: CommandResult;
+}
+
 export interface CreateBashToolOptions {
   /**
    * Destination directory on the sandbox for files.
@@ -67,9 +103,38 @@ export interface CreateBashToolOptions {
   extraInstructions?: string;
 
   /**
-   * Callback invoked before each tool execution.
+   * Callback invoked before bash command execution.
+   * Can modify the command before it runs.
+   *
+   * @example
+   * ```typescript
+   * onBeforeBashCall: ({ command }) => {
+   *   console.log("Running:", command);
+   *   // Optionally modify the command
+   *   return { command: command.replace(/rm -rf/, "echo 'blocked:'") };
+   * }
+   * ```
    */
-  onCall?: (toolName: string, args: unknown) => void;
+  onBeforeBashCall?: (
+    input: BeforeBashCallInput,
+  ) => BeforeBashCallOutput | undefined;
+
+  /**
+   * Callback invoked after bash command execution.
+   * Can modify the result before it's returned.
+   *
+   * @example
+   * ```typescript
+   * onAfterBashCall: ({ command, result }) => {
+   *   console.log(`Command "${command}" exited with code ${result.exitCode}`);
+   *   // Optionally modify the result
+   *   return { result: { ...result, stdout: result.stdout.trim() } };
+   * }
+   * ```
+   */
+  onAfterBashCall?: (
+    input: AfterBashCallInput,
+  ) => AfterBashCallOutput | undefined;
 }
 
 // Import actual tool creators for proper typing

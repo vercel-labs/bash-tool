@@ -91,13 +91,21 @@ const { tools } = await createBashTool({
 });
 ```
 
-### Track tool calls
+### Intercept bash commands
 
 ```typescript
 const { tools } = await createBashTool({
-  files: { "index.ts": "export const x = 1;" },
-  onCall: (toolName, args) => {
-    console.log(`Tool called: ${toolName}`, args);
+  onBeforeBashCall: ({ command }) => {
+    console.log("Running:", command);
+    // Optionally modify the command
+    if (command.includes("rm -rf")) {
+      return { command: "echo 'Blocked dangerous command'" };
+    }
+  },
+  onAfterBashCall: ({ command, result }) => {
+    console.log(`Exit code: ${result.exitCode}`);
+    // Optionally modify the result
+    return { result: { ...result, stdout: result.stdout.trim() } };
   },
 });
 ```

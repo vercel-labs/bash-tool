@@ -79,13 +79,31 @@ export interface Sandbox {
   writeFile(path: string, content: string): Promise<void>;
 }
 
+export interface BeforeBashCallInput {
+  command: string;
+}
+
+export interface BeforeBashCallOutput {
+  command: string;
+}
+
+export interface AfterBashCallInput {
+  command: string;
+  result: CommandResult;
+}
+
+export interface AfterBashCallOutput {
+  result: CommandResult;
+}
+
 export interface CreateBashToolOptions {
   destination?: string;
   files?: Record<string, string>;
   uploadDirectory?: { source: string; include?: string };
   sandbox?: any;
   extraInstructions?: string;
-  onCall?: (toolName: string, args: unknown) => void;
+  onBeforeBashCall?: (input: BeforeBashCallInput) => BeforeBashCallOutput | undefined | void;
+  onAfterBashCall?: (input: AfterBashCallInput) => AfterBashCallOutput | undefined | void;
 }
 
 export interface BashToolkit {

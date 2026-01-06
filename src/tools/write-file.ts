@@ -9,18 +9,16 @@ const writeFileSchema = z.object({
 
 export interface CreateWriteFileToolOptions {
   sandbox: Sandbox;
-  onCall?: (toolName: string, args: unknown) => void;
 }
 
 export function createWriteFileTool(options: CreateWriteFileToolOptions) {
-  const { sandbox, onCall } = options;
+  const { sandbox } = options;
 
   return tool({
     description:
       "Write content to a file in the sandbox. Creates parent directories if needed.",
     inputSchema: writeFileSchema,
     execute: async ({ path, content }) => {
-      onCall?.("writeFile", { path, content });
       await sandbox.writeFile(path, content);
       return { success: true };
     },

@@ -1,6 +1,12 @@
 import { tool } from "ai";
 import { z } from "zod";
-import type { Sandbox } from "../types.js";
+import type {
+  AfterBashCallInput,
+  AfterBashCallOutput,
+  BeforeBashCallInput,
+  BeforeBashCallOutput,
+  Sandbox,
+} from "../types.js";
 
 const bashSchema = z.object({
   command: z.string().describe("The bash command to execute"),
@@ -13,7 +19,14 @@ export interface CreateBashToolOptions {
   /** List of file paths available in the sandbox (relative to cwd) */
   files?: string[];
   extraInstructions?: string;
-  onCall?: (toolName: string, args: unknown) => void;
+  /** Callback before command execution, can modify the command */
+  onBeforeBashCall?: (
+    input: BeforeBashCallInput,
+  ) => BeforeBashCallOutput | undefined;
+  /** Callback after command execution, can modify the result */
+  onAfterBashCall?: (
+    input: AfterBashCallInput,
+  ) => AfterBashCallOutput | undefined;
 }
 
 function generateDescription(options: CreateBashToolOptions): string {
@@ -57,14 +70,33 @@ function generateDescription(options: CreateBashToolOptions): string {
 }
 
 export function createBashExecuteTool(options: CreateBashToolOptions) {
-  const { sandbox, onCall } = options;
+  const { sandbox, onBeforeBashCall, onAfterBashCall } = options;
 
   return tool({
     description: generateDescription(options),
     inputSchema: bashSchema,
-    execute: async ({ command }) => {
-      onCall?.("bash", { command });
-      return sandbox.executeCommand(command);
+    execute: async ({ command: originalCommand }) => {
+      // Allow modification of command before execution
+      let command = originalCommand;
+      if (onBeforeBashCall) {
+        const beforeResult = onBeforeBashCall({ command });
+        if (beforeResult?.command !== undefined) {
+          command = beforeResult.command;
+        }
+      }
+
+      // Execute the command
+      let result = await sandbox.executeCommand(command);
+
+      // Allow modification of result after execution
+      if (onAfterBashCall) {
+        const afterResult = onAfterBashCall({ command, result });
+        if (afterResult?.result !== undefined) {
+          result = afterResult.result;
+        }
+      }
+
+      return result;
     },
   });
 }

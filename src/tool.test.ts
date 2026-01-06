@@ -157,23 +157,64 @@ describe("createBashTool", () => {
     expect(result.success).toBe(true);
   });
 
-  it("calls onCall callback", async () => {
-    const onCall = vi.fn();
+  it("calls onBeforeBashCall and onAfterBashCall callbacks", async () => {
+    const onBeforeBashCall = vi.fn();
+    const onAfterBashCall = vi.fn();
     const { tools } = await createBashTool({
-      onCall,
+      onBeforeBashCall,
+      onAfterBashCall,
       files: { "test.txt": "hello" },
     });
 
     assert(tools.bash.execute, "bash.execute should be defined");
-    assert(tools.readFile.execute, "readFile.execute should be defined");
 
     await tools.bash.execute({ command: "ls" }, opts);
-    expect(onCall).toHaveBeenCalledWith("bash", { command: "ls" });
 
-    await tools.readFile.execute({ path: "/workspace/test.txt" }, opts);
-    expect(onCall).toHaveBeenCalledWith("readFile", {
-      path: "/workspace/test.txt",
+    expect(onBeforeBashCall).toHaveBeenCalledWith({ command: "ls" });
+    expect(onAfterBashCall).toHaveBeenCalledWith({
+      command: "ls",
+      result: expect.objectContaining({ exitCode: expect.any(Number) }),
     });
+  });
+
+  it("allows onBeforeBashCall to modify command", async () => {
+    const onBeforeBashCall = vi.fn().mockReturnValue({ command: "pwd" });
+    const onAfterBashCall = vi.fn();
+    const { tools } = await createBashTool({
+      onBeforeBashCall,
+      onAfterBashCall,
+    });
+
+    assert(tools.bash.execute, "bash.execute should be defined");
+
+    await tools.bash.execute({ command: "ls" }, opts);
+
+    // onBeforeBashCall receives the original command
+    expect(onBeforeBashCall).toHaveBeenCalledWith({ command: "ls" });
+    // onAfterBashCall receives the modified command
+    expect(onAfterBashCall).toHaveBeenCalledWith({
+      command: "pwd",
+      result: expect.objectContaining({ exitCode: expect.any(Number) }),
+    });
+  });
+
+  it("allows onAfterBashCall to modify result", async () => {
+    const onAfterBashCall = vi.fn().mockReturnValue({
+      result: { stdout: "modified output", stderr: "", exitCode: 42 },
+    });
+    const { tools } = await createBashTool({
+      onAfterBashCall,
+    });
+
+    assert(tools.bash.execute, "bash.execute should be defined");
+
+    const result = (await tools.bash.execute(
+      { command: "echo test" },
+      opts,
+    )) as CommandResult;
+
+    expect(result.stdout).toBe("modified output");
+    expect(result.exitCode).toBe(42);
   });
 
   it("accepts custom Sandbox implementation", async () => {
