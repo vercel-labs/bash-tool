@@ -1,4 +1,5 @@
 import path from "node:path";
+import { createToolPrompt } from "./bash-tools.js";
 import { loadFiles } from "./files/loader.js";
 import {
   createJustBashSandbox,
@@ -59,6 +60,7 @@ export async function createBashTool(
 
   // 3. Create or wrap sandbox
   let sandbox: Sandbox;
+  let usingJustBash = false;
 
   if (options.sandbox) {
     // Check @vercel/sandbox first (more specific check)
@@ -66,6 +68,7 @@ export async function createBashTool(
       sandbox = wrapVercelSandbox(options.sandbox);
     } else if (isJustBash(options.sandbox)) {
       sandbox = wrapJustBash(options.sandbox);
+      usingJustBash = true;
     } else {
       sandbox = options.sandbox as Sandbox;
     }
@@ -80,15 +83,23 @@ export async function createBashTool(
       files: filesWithDestination,
       cwd: destination,
     });
+    usingJustBash = true;
   }
 
-  // 4. Create tools
+  // 4. Discover available tools and generate prompt
   const fileList = Object.keys(loadedFiles);
+  const toolPrompt = await createToolPrompt({
+    sandbox,
+    filenames: fileList,
+    isJustBash: usingJustBash,
+  });
 
+  // 5. Create tools
   const bash = createBashExecuteTool({
     sandbox,
     cwd: destination,
     files: fileList,
+    toolPrompt,
     extraInstructions: options.extraInstructions,
     onBeforeBashCall: options.onBeforeBashCall,
     onAfterBashCall: options.onAfterBashCall,

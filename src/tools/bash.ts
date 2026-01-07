@@ -19,6 +19,8 @@ export interface CreateBashToolOptions {
   /** List of file paths available in the sandbox (relative to cwd) */
   files?: string[];
   extraInstructions?: string;
+  /** Auto-generated prompt describing available bash tools */
+  toolPrompt?: string;
   /** Callback before command execution, can modify the command */
   onBeforeBashCall?: (
     input: BeforeBashCallInput,
@@ -30,7 +32,7 @@ export interface CreateBashToolOptions {
 }
 
 function generateDescription(options: CreateBashToolOptions): string {
-  const { cwd, files, extraInstructions } = options;
+  const { cwd, files, extraInstructions, toolPrompt } = options;
 
   const lines: string[] = [
     "Execute bash commands in the sandbox environment.",
@@ -51,6 +53,12 @@ function generateDescription(options: CreateBashToolOptions): string {
     if (files.length > 8) {
       lines.push(`  ... and ${files.length - 8} more files`);
     }
+    lines.push("");
+  }
+
+  // Add available tools prompt if provided
+  if (toolPrompt) {
+    lines.push(toolPrompt);
     lines.push("");
   }
 

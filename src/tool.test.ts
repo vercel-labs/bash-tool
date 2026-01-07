@@ -65,6 +65,16 @@ vi.mock("just-bash", () => ({
         return { stdout: files, stderr: "", exitCode: 0 };
       }
 
+      // Handle combined ls for bin directories (tool discovery)
+      if (command.startsWith("ls /usr/bin /usr/local/bin")) {
+        return {
+          stdout:
+            "/usr/bin:\ncat\ngrep\nsed\nawk\nhead\ntail\nsort\ncut\n/usr/local/bin:\njq\nyq",
+          stderr: "",
+          exitCode: 0,
+        };
+      }
+
       if (command === "pwd") {
         return { stdout: mockCwd, stderr: "", exitCode: 0 };
       }
@@ -247,5 +257,184 @@ describe("createBashTool", () => {
       opts,
     )) as CommandResult;
     expect(result.stdout).toBe("custom");
+  });
+});
+
+describe("createBashTool tool prompt integration", () => {
+  beforeEach(() => {
+    for (const key of Object.keys(mockFiles)) {
+      delete mockFiles[key];
+    }
+  });
+
+  it("includes available tools in bash tool description", async () => {
+    const { tools } = await createBashTool({
+      files: { "readme.txt": "hello" },
+    });
+
+    expect(
+      tools.bash.description,
+    ).toBe(`Execute bash commands in the sandbox environment.
+
+WORKING DIRECTORY: /workspace
+All commands execute from this directory. Use relative paths from here.
+
+Available files:
+  readme.txt
+
+Available tools: awk, cat, cut, grep, head, jq, sed, sort, tail, yq, and more
+
+Common operations:
+  ls -la              # List files with details
+  find . -name '*.ts' # Find files by pattern
+  grep -r 'pattern' . # Search file contents
+  cat <file>          # View file contents`);
+  });
+
+  it("includes format-specific hints for JSON files", async () => {
+    const { tools } = await createBashTool({
+      files: { "data.json": '{"key": "value"}' },
+    });
+
+    expect(
+      tools.bash.description,
+    ).toBe(`Execute bash commands in the sandbox environment.
+
+WORKING DIRECTORY: /workspace
+All commands execute from this directory. Use relative paths from here.
+
+Available files:
+  data.json
+
+Available tools: awk, cat, cut, grep, head, jq, sed, sort, tail, yq, and more
+For JSON: jq, grep, sed
+
+Common operations:
+  ls -la              # List files with details
+  find . -name '*.ts' # Find files by pattern
+  grep -r 'pattern' . # Search file contents
+  cat <file>          # View file contents`);
+  });
+
+  it("includes format-specific hints for YAML files", async () => {
+    const { tools } = await createBashTool({
+      files: { "config.yaml": "key: value" },
+    });
+
+    expect(
+      tools.bash.description,
+    ).toBe(`Execute bash commands in the sandbox environment.
+
+WORKING DIRECTORY: /workspace
+All commands execute from this directory. Use relative paths from here.
+
+Available files:
+  config.yaml
+
+Available tools: awk, cat, cut, grep, head, jq, sed, sort, tail, yq, and more
+For YAML: yq, grep, sed
+
+Common operations:
+  ls -la              # List files with details
+  find . -name '*.ts' # Find files by pattern
+  grep -r 'pattern' . # Search file contents
+  cat <file>          # View file contents`);
+  });
+
+  it("includes format-specific hints for multiple formats", async () => {
+    const { tools } = await createBashTool({
+      files: {
+        "data.json": "{}",
+        "config.yaml": "",
+        "readme.md": "# Hello",
+      },
+    });
+
+    expect(
+      tools.bash.description,
+    ).toBe(`Execute bash commands in the sandbox environment.
+
+WORKING DIRECTORY: /workspace
+All commands execute from this directory. Use relative paths from here.
+
+Available files:
+  data.json
+  config.yaml
+  readme.md
+
+Available tools: awk, cat, cut, grep, head, jq, sed, sort, tail, yq, and more
+For JSON: jq, grep, sed
+For YAML: yq, grep, sed
+
+Common operations:
+  ls -la              # List files with details
+  find . -name '*.ts' # Find files by pattern
+  grep -r 'pattern' . # Search file contents
+  cat <file>          # View file contents`);
+  });
+
+  it("includes yq for CSV when using just-bash sandbox", async () => {
+    const { tools } = await createBashTool({
+      files: { "data.csv": "a,b,c" },
+    });
+
+    // Default sandbox is just-bash, so yq should be included for CSV
+    expect(
+      tools.bash.description,
+    ).toBe(`Execute bash commands in the sandbox environment.
+
+WORKING DIRECTORY: /workspace
+All commands execute from this directory. Use relative paths from here.
+
+Available files:
+  data.csv
+
+Available tools: awk, cat, cut, grep, head, jq, sed, sort, tail, yq, and more
+For CSV/TSV: yq, awk, cut
+
+Common operations:
+  ls -la              # List files with details
+  find . -name '*.ts' # Find files by pattern
+  grep -r 'pattern' . # Search file contents
+  cat <file>          # View file contents`);
+  });
+
+  it("includes extraInstructions after tool prompt", async () => {
+    const { tools } = await createBashTool({
+      files: { "app.ts": "console.log('hi')" },
+      extraInstructions: "Always use TypeScript.",
+    });
+
+    expect(
+      tools.bash.description,
+    ).toBe(`Execute bash commands in the sandbox environment.
+
+WORKING DIRECTORY: /workspace
+All commands execute from this directory. Use relative paths from here.
+
+Available files:
+  app.ts
+
+Available tools: awk, cat, cut, grep, head, jq, sed, sort, tail, yq, and more
+
+Common operations:
+  ls -la              # List files with details
+  find . -name '*.ts' # Find files by pattern
+  grep -r 'pattern' . # Search file contents
+  cat <file>          # View file contents
+
+Always use TypeScript.`);
+  });
+
+  it("uses custom destination in description", async () => {
+    const { tools } = await createBashTool({
+      destination: "/home/user/project",
+      files: { "index.ts": "" },
+    });
+
+    expect(tools.bash.description).toContain(
+      "WORKING DIRECTORY: /home/user/project",
+    );
+    expect(tools.bash.description).toContain("Available tools:");
   });
 });
