@@ -35,6 +35,49 @@ const result = await agent.generate({
 });
 ```
 
+## Tools
+
+The `tools` object contains three tools that can be used by AI agents:
+
+### `bash`
+
+Execute bash commands in the sandbox environment. For analysis agents, this may be the only tool you need to give to the agent.
+
+**Input:**
+
+- `command` (string): The bash command to execute
+
+**Returns:**
+
+- `stdout` (string): Standard output from the command
+- `stderr` (string): Standard error from the command
+- `exitCode` (number): Exit code of the command
+
+### `readFile`
+
+Read the contents of a file from the sandbox.
+
+**Input:**
+
+- `path` (string): The path to the file to read
+
+**Returns:**
+
+- `content` (string): The file contents
+
+### `writeFile`
+
+Write content to a file in the sandbox. Creates parent directories if needed.
+
+**Input:**
+
+- `path` (string): The path where the file should be written
+- `content` (string): The content to write to the file
+
+**Returns:**
+
+- `success` (boolean): `true` if the write succeeded
+
 ## Advanced Usage
 
 ### Upload a local directory
