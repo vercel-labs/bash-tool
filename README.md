@@ -8,7 +8,7 @@ Generic bash tool for AI agents, compatible with [AI SDK](https://ai-sdk.dev/).
 npm install bash-tool just-bash
 ```
 
-For full VM support, install `@vercel/sandbox` or another sandbox product instead of `just-bash`.
+For full VM support, install [`@vercel/sandbox`](https://vercel.com/docs/vercel-sandbox) or another sandbox product instead of `just-bash`.
 
 ## Usage
 
@@ -91,7 +91,7 @@ const { bash } = await createBashTool({
 });
 ```
 
-### Use @vercel/sandbox for full VM
+### Use [@vercel/sandbox](https://vercel.com/docs/vercel-sandbox) for full VM
 
 ```typescript
 import { Sandbox } from "@vercel/sandbox";
