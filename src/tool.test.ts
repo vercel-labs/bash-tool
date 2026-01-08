@@ -437,4 +437,86 @@ Always use TypeScript.`);
     );
     expect(tools.bash.description).toContain("Available tools:");
   });
+
+  it("uses custom toolPrompt from promptOptions", async () => {
+    const { tools } = await createBashTool({
+      files: { "data.json": "{}" },
+      promptOptions: {
+        toolPrompt: "Custom tools: myTool, otherTool",
+      },
+    });
+
+    expect(
+      tools.bash.description,
+    ).toBe(`Execute bash commands in the sandbox environment.
+
+WORKING DIRECTORY: /workspace
+All commands execute from this directory. Use relative paths from here.
+
+Available files:
+  data.json
+
+Custom tools: myTool, otherTool
+
+Common operations:
+  ls -la              # List files with details
+  find . -name '*.ts' # Find files by pattern
+  grep -r 'pattern' . # Search file contents
+  cat <file>          # View file contents`);
+  });
+
+  it("uses empty string toolPrompt to disable tool hints", async () => {
+    const { tools } = await createBashTool({
+      files: { "data.json": "{}" },
+      promptOptions: {
+        toolPrompt: "",
+      },
+    });
+
+    expect(
+      tools.bash.description,
+    ).toBe(`Execute bash commands in the sandbox environment.
+
+WORKING DIRECTORY: /workspace
+All commands execute from this directory. Use relative paths from here.
+
+Available files:
+  data.json
+
+Common operations:
+  ls -la              # List files with details
+  find . -name '*.ts' # Find files by pattern
+  grep -r 'pattern' . # Search file contents
+  cat <file>          # View file contents`);
+  });
+
+  it("combines custom toolPrompt with extraInstructions", async () => {
+    const { tools } = await createBashTool({
+      files: { "app.ts": "" },
+      promptOptions: {
+        toolPrompt: "Use: node, npm",
+      },
+      extraInstructions: "Always run tests first.",
+    });
+
+    expect(
+      tools.bash.description,
+    ).toBe(`Execute bash commands in the sandbox environment.
+
+WORKING DIRECTORY: /workspace
+All commands execute from this directory. Use relative paths from here.
+
+Available files:
+  app.ts
+
+Use: node, npm
+
+Common operations:
+  ls -la              # List files with details
+  find . -name '*.ts' # Find files by pattern
+  grep -r 'pattern' . # Search file contents
+  cat <file>          # View file contents
+
+Always run tests first.`);
+  });
 });

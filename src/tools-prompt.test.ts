@@ -3,7 +3,7 @@ import {
   createToolPrompt,
   detectFormat,
   discoverAvailableTools,
-} from "./bash-tools.js";
+} from "./tools-prompt.js";
 import type { Sandbox } from "./types.js";
 
 function createMockSandbox(tools: string[]): Sandbox {
@@ -90,7 +90,16 @@ describe("discoverAvailableTools", () => {
   });
 
   it("discovers multiple tools", async () => {
-    const sandbox = createMockSandbox(["cat", "grep", "jq", "yq", "sed"]);
+    const sandbox = createMockSandbox([
+      "cat",
+      "grep",
+      "jq",
+      "yq",
+      "sed",
+      "node",
+      "python",
+      "xan",
+    ]);
 
     const tools = await discoverAvailableTools(sandbox);
 
@@ -99,6 +108,9 @@ describe("discoverAvailableTools", () => {
     expect(tools.has("jq")).toBe(true);
     expect(tools.has("yq")).toBe(true);
     expect(tools.has("sed")).toBe(true);
+    expect(tools.has("node")).toBe(true);
+    expect(tools.has("python")).toBe(true);
+    expect(tools.has("xan")).toBe(true);
   });
 
   it("handles empty output gracefully", async () => {
@@ -209,7 +221,7 @@ For HTML: html-to-markdown, grep, sed`);
 For XML: yq, grep, sed`);
   });
 
-  it("includes format-specific hints for CSV files without yq by default", async () => {
+  it("includes format-specific hints for CSV files with xan as primary", async () => {
     const sandbox = createMockSandbox([
       "awk",
       "cat",
@@ -217,6 +229,7 @@ For XML: yq, grep, sed`);
       "grep",
       "sed",
       "sort",
+      "xan",
       "yq",
     ]);
 
@@ -228,8 +241,8 @@ For XML: yq, grep, sed`);
 
     expect(
       prompt,
-    ).toBe(`Available tools: awk, cat, cut, grep, sed, sort, yq, and more
-For CSV/TSV: awk, cut, sort`);
+    ).toBe(`Available tools: awk, cat, cut, grep, sed, sort, xan, yq, and more
+For CSV/TSV: xan, awk, cut`);
   });
 
   it("includes yq for CSV files when isJustBash is true", async () => {
@@ -240,6 +253,7 @@ For CSV/TSV: awk, cut, sort`);
       "grep",
       "sed",
       "sort",
+      "xan",
       "yq",
     ]);
 
@@ -251,8 +265,8 @@ For CSV/TSV: awk, cut, sort`);
 
     expect(
       prompt,
-    ).toBe(`Available tools: awk, cat, cut, grep, sed, sort, yq, and more
-For CSV/TSV: yq, awk, cut`);
+    ).toBe(`Available tools: awk, cat, cut, grep, sed, sort, xan, yq, and more
+For CSV/TSV: yq, xan, awk`);
   });
 
   it("includes format-specific hints for TOML files", async () => {
@@ -316,5 +330,29 @@ For YAML: yq, grep, sed`);
     // Should not show jq since it's not available
     expect(prompt).toBe(`Available tools: cat, grep, sed, and more
 For JSON: grep, sed, cat`);
+  });
+
+  it("returns custom toolPrompt when provided", async () => {
+    const sandbox = createMockSandbox(["cat", "grep", "sed"]);
+
+    const prompt = await createToolPrompt({
+      sandbox,
+      filenames: ["data.json"],
+      toolPrompt: "Custom tool prompt",
+    });
+
+    expect(prompt).toBe("Custom tool prompt");
+  });
+
+  it("returns empty string when toolPrompt is empty string", async () => {
+    const sandbox = createMockSandbox(["cat", "grep", "sed"]);
+
+    const prompt = await createToolPrompt({
+      sandbox,
+      filenames: ["data.json"],
+      toolPrompt: "",
+    });
+
+    expect(prompt).toBe("");
   });
 });

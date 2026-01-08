@@ -61,6 +61,17 @@ export interface AfterBashCallOutput {
   result: CommandResult;
 }
 
+/**
+ * Options for customizing the tool prompt generation.
+ */
+export interface PromptOptions {
+  /**
+   * Custom tool prompt to use instead of auto-generating one.
+   * When provided, skips tool discovery entirely.
+   */
+  toolPrompt?: string;
+}
+
 export interface CreateBashToolOptions {
   /**
    * Destination directory on the sandbox for files.
@@ -101,6 +112,11 @@ export interface CreateBashToolOptions {
    * Additional instructions to append to tool descriptions.
    */
   extraInstructions?: string;
+
+  /**
+   * Options for customizing the tool prompt generation.
+   */
+  promptOptions?: PromptOptions;
 
   /**
    * Callback invoked before bash command execution.

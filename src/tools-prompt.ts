@@ -152,7 +152,6 @@ export const bashTools: BashToolInfo[] = [
     purpose: "SQL-like join on sorted files",
     category: "organize",
   },
-  { name: "less", purpose: "Pager for viewing large files", category: "view" },
   { name: "expand", purpose: "Convert tabs to spaces", category: "transform" },
   {
     name: "unexpand",
@@ -177,17 +176,25 @@ export const bashTools: BashToolInfo[] = [
     purpose: "Convert HTML to markdown (just-bash)",
     category: "transform",
   },
+  { name: "node", purpose: "JavaScript runtime", category: "utilities" },
+  { name: "python", purpose: "Python interpreter", category: "utilities" },
+  {
+    name: "xan",
+    purpose: "Fast CSV processing, filtering, aggregation, and visualization",
+    category: "structured-data",
+  },
 ];
 
 /**
  * Maps file formats to the bash tools most useful for processing them.
  */
 export const toolsByFormat: Record<FileFormat, string[]> = {
-  json: ["jq", "grep", "sed", "cat", "head", "tail", "less", "curl"],
-  yaml: ["yq", "grep", "sed", "cat", "head", "tail", "less"],
-  html: ["html-to-markdown", "grep", "sed", "curl", "cat", "less"],
-  xml: ["yq", "grep", "sed", "awk", "cat", "head", "tail", "less"],
+  json: ["jq", "grep", "sed", "cat", "head", "tail"],
+  yaml: ["yq", "grep", "sed", "cat", "head", "tail"],
+  html: ["html-to-markdown", "grep", "sed", "curl", "cat"],
+  xml: ["yq", "grep", "sed", "awk", "cat", "head", "tail"],
   csv: [
+    "xan",
     "awk",
     "cut",
     "sort",
@@ -200,8 +207,8 @@ export const toolsByFormat: Record<FileFormat, string[]> = {
     "head",
     "tail",
   ],
-  toml: ["yq", "grep", "sed", "cat", "head", "tail", "less"],
-  ini: ["yq", "grep", "sed", "cat", "head", "tail", "less"],
+  toml: ["yq", "grep", "sed", "cat", "head", "tail"],
+  ini: ["yq", "grep", "sed", "cat", "head", "tail"],
   binary: ["strings", "od", "xxd", "head", "tail", "split"],
   text: [
     "grep",
@@ -312,6 +319,8 @@ export interface ToolPromptOptions {
   filenames: string[];
   /** Set to true if using just-bash sandbox (enables yq CSV support) */
   isJustBash?: boolean;
+  /** Custom tool prompt. If provided, skips tool discovery and returns this value. */
+  toolPrompt?: string;
 }
 
 /**
@@ -332,7 +341,12 @@ export interface ToolPromptOptions {
 export async function createToolPrompt(
   options: ToolPromptOptions,
 ): Promise<string> {
-  const { sandbox, filenames, isJustBash = false } = options;
+  const { sandbox, filenames, isJustBash = false, toolPrompt } = options;
+
+  // Return custom toolPrompt if provided
+  if (toolPrompt !== undefined) {
+    return toolPrompt;
+  }
 
   // Discover available tools
   const availableTools = await discoverAvailableTools(sandbox);

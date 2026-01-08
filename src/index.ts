@@ -1,9 +1,10 @@
+export { createBashTool } from "./tool.js";
 export type {
   BashToolCategory,
   BashToolInfo,
   FileFormat,
   ToolPromptOptions,
-} from "./bash-tools.js";
+} from "./tools-prompt.js";
 export {
   bashTools,
   createToolPrompt,
@@ -12,13 +13,13 @@ export {
   getToolsByCategory,
   getToolsForFormat,
   toolsByFormat,
-} from "./bash-tools.js";
-export { createBashTool } from "./tool.js";
+} from "./tools-prompt.js";
 export type {
   BashToolkit,
   CommandResult,
   CreateBashToolOptions,
   JustBashInstance,
+  PromptOptions,
   Sandbox,
   VercelSandboxInstance,
 } from "./types.js";

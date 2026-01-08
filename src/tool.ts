@@ -1,5 +1,4 @@
 import path from "node:path";
-import { createToolPrompt } from "./bash-tools.js";
 import { loadFiles } from "./files/loader.js";
 import {
   createJustBashSandbox,
@@ -10,6 +9,7 @@ import { isVercelSandbox, wrapVercelSandbox } from "./sandbox/vercel.js";
 import { createBashExecuteTool } from "./tools/bash.js";
 import { createReadFileTool } from "./tools/read-file.js";
 import { createWriteFileTool } from "./tools/write-file.js";
+import { createToolPrompt } from "./tools-prompt.js";
 import type { BashToolkit, CreateBashToolOptions, Sandbox } from "./types.js";
 
 const DEFAULT_DESTINATION = "/workspace";
@@ -92,6 +92,7 @@ export async function createBashTool(
     sandbox,
     filenames: fileList,
     isJustBash: usingJustBash,
+    toolPrompt: options.promptOptions?.toolPrompt,
   });
 
   // 5. Create tools
