@@ -3,7 +3,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Generic bash tool for AI agents, compatible with AI SDK",
   "type": "module",
   "main": "dist/index.js",
@@ -23,8 +23,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && sed '1,/^-->/d' AGENTS.npm.md > dist/AGENTS.md",
     "typecheck": "tsc --noEmit",
-    "test": "vitest",
-    "test:run": "vitest run",
+    "test": "vitest --exclude 'src/tool.vercel.integration.test.ts'",
+    "test:run": "vitest run --exclude 'src/tool.vercel.integration.test.ts'",
+    "test:vercel": "vitest run src/tool.vercel.integration.test.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",

@@ -13,6 +13,7 @@ import { createToolPrompt } from "./tools-prompt.js";
 import type { BashToolkit, CreateBashToolOptions, Sandbox } from "./types.js";
 
 const DEFAULT_DESTINATION = "/workspace";
+const VERCEL_SANDBOX_DESTINATION = "/vercel/sandbox/workspace";
 
 /**
  * Creates a bash tool with tools for AI agents.
@@ -43,7 +44,12 @@ const DEFAULT_DESTINATION = "/workspace";
 export async function createBashTool(
   options: CreateBashToolOptions = {},
 ): Promise<BashToolkit> {
-  const destination = options.destination ?? DEFAULT_DESTINATION;
+  // Determine default destination based on sandbox type
+  const defaultDestination =
+    options.sandbox && isVercelSandbox(options.sandbox)
+      ? VERCEL_SANDBOX_DESTINATION
+      : DEFAULT_DESTINATION;
+  const destination = options.destination ?? defaultDestination;
 
   // 1. Load files from disk and/or inline
   const loadedFiles = await loadFiles({

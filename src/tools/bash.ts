@@ -78,7 +78,7 @@ function generateDescription(options: CreateBashToolOptions): string {
 }
 
 export function createBashExecuteTool(options: CreateBashToolOptions) {
-  const { sandbox, onBeforeBashCall, onAfterBashCall } = options;
+  const { sandbox, cwd, onBeforeBashCall, onAfterBashCall } = options;
 
   return tool({
     description: generateDescription(options),
@@ -93,8 +93,11 @@ export function createBashExecuteTool(options: CreateBashToolOptions) {
         }
       }
 
+      // Prepend cd to ensure commands run in the working directory
+      const fullCommand = `cd "${cwd}" && ${command}`;
+
       // Execute the command
-      let result = await sandbox.executeCommand(command);
+      let result = await sandbox.executeCommand(fullCommand);
 
       // Allow modification of result after execution
       if (onAfterBashCall) {

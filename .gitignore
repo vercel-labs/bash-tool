@@ -29,3 +29,5 @@ coverage/
 
 # Project specific
 todo/
+.vercel
+.env*.local
