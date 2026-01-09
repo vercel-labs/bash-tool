@@ -77,7 +77,7 @@ export interface CreateBashToolOptions {
    * Destination directory on the sandbox for files.
    * Both `files` and `uploadDirectory` are written relative to this.
    * Also used as the working directory for commands.
-   * @default "/workspace"
+   * @default "./workspace"
    */
   destination?: string;
 

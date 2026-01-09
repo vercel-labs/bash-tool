@@ -97,7 +97,7 @@ const { bash } = await createBashTool({
 import { Sandbox } from "@vercel/sandbox";
 
 const sandbox = await Sandbox.create();
-// Files are written to /workspace by default
+// Files are written to ./workspace by default
 const { tools } = await createBashTool({
   sandbox,
   files: { "index.ts": "console.log('hello');" },
