@@ -71,12 +71,15 @@ export function wrapVercelSandbox(vercelSandbox: VercelSandboxLike): Sandbox {
     },
 
     async writeFiles(
-      files: Array<{ path: string; content: string }>,
+      files: Array<{ path: string; content: string | Buffer }>,
     ): Promise<void> {
+      // Convert all content to Buffer (binary) and write
       await vercelSandbox.writeFiles(
         files.map((f) => ({
           path: f.path,
-          content: Buffer.from(f.content, "utf-8"),
+          content: Buffer.isBuffer(f.content)
+            ? f.content
+            : Buffer.from(f.content),
         })),
       );
     },

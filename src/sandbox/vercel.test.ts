@@ -113,4 +113,27 @@ describe("wrapVercelSandbox", () => {
       { path: "/other.txt", content: Buffer.from("other", "utf-8") },
     ]);
   });
+
+  it("passes through Buffer content without re-encoding", async () => {
+    const mockWriteFiles = vi.fn().mockResolvedValue(undefined);
+
+    const mockVercelSandbox: VercelSandboxLike = {
+      sandboxId: "sbx-123",
+      runCommand: vi.fn(),
+      readFile: vi.fn(),
+      writeFiles: mockWriteFiles,
+    };
+
+    const binaryContent = Buffer.from([0x89, 0x50, 0x4e, 0x47]); // PNG header
+    const sandbox = wrapVercelSandbox(mockVercelSandbox);
+    await sandbox.writeFiles([
+      { path: "/image.png", content: binaryContent },
+      { path: "/text.txt", content: "string" },
+    ]);
+
+    expect(mockWriteFiles).toHaveBeenCalledWith([
+      { path: "/image.png", content: binaryContent },
+      { path: "/text.txt", content: Buffer.from("string") },
+    ]);
+  });
 });

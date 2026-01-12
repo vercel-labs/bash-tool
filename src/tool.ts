@@ -1,5 +1,5 @@
 import path from "node:path";
-import { loadFiles } from "./files/loader.js";
+import { getFilePaths, streamFiles } from "./files/loader.js";
 import {
   createJustBashSandbox,
   isJustBash,
@@ -14,6 +14,8 @@ import type { BashToolkit, CreateBashToolOptions, Sandbox } from "./types.js";
 
 const DEFAULT_DESTINATION = "/workspace";
 const VERCEL_SANDBOX_DESTINATION = "/vercel/sandbox/workspace";
+const WRITE_BATCH_SIZE = 20;
+const DEFAULT_MAX_FILES = 1000;
 
 /**
  * Creates a bash tool with tools for AI agents.
@@ -51,26 +53,18 @@ export async function createBashTool(
       : DEFAULT_DESTINATION;
   const destination = options.destination ?? defaultDestination;
 
-  // 1. Load files from disk and/or inline
-  const loadedFiles = await loadFiles({
-    files: options.files,
-    uploadDirectory: options.uploadDirectory,
-  });
-
-  // 2. Prefix all file paths with destination
-  const filesWithDestination: Record<string, string> = {};
-  for (const [relativePath, content] of Object.entries(loadedFiles)) {
-    const absolutePath = path.posix.join(destination, relativePath);
-    filesWithDestination[absolutePath] = content;
-  }
-
   // 3. Create or wrap sandbox
   let sandbox: Sandbox;
   let usingJustBash = false;
+  let fileList: string[] = [];
+  let workingDir = destination;
+
+  const maxFiles = options.maxFiles ?? DEFAULT_MAX_FILES;
 
   let fileWrittenPromise: Promise<void> | undefined;
 
   if (options.sandbox) {
+    // External sandbox provided - stream files and write in batches
     // Check @vercel/sandbox first (more specific check)
     if (isVercelSandbox(options.sandbox)) {
       sandbox = wrapVercelSandbox(options.sandbox);
@@ -81,24 +75,109 @@ export async function createBashTool(
       sandbox = options.sandbox as Sandbox;
     }
 
-    // Write files to existing sandbox in one call
-    const filesToWrite = Object.entries(filesWithDestination).map(
-      ([filePath, content]) => ({ path: filePath, content }),
-    );
-    if (filesToWrite.length > 0) {
-      fileWrittenPromise = sandbox.writeFiles(filesToWrite);
-    }
-  } else {
-    // Create just-bash sandbox with files
-    sandbox = await createJustBashSandbox({
-      files: filesWithDestination,
-      cwd: destination,
+    // Get file paths for tool prompt (without loading content)
+    fileList = await getFilePaths({
+      files: options.files,
+      uploadDirectory: options.uploadDirectory,
     });
+
+    // Check file limit
+    if (maxFiles > 0 && fileList.length > maxFiles) {
+      throw new Error(
+        `Too many files to upload: ${fileList.length} files exceeds the limit of ${maxFiles}. ` +
+          `Either increase maxFiles, use a more restrictive include pattern in uploadDirectory, ` +
+          `or write files to the sandbox yourself before calling createBashTool.`,
+      );
+    }
+
+    // Stream files and write in batches to avoid memory issues
+    fileWrittenPromise = (async () => {
+      let batch: Array<{ path: string; content: Buffer }> = [];
+
+      for await (const file of streamFiles({
+        files: options.files,
+        uploadDirectory: options.uploadDirectory,
+      })) {
+        batch.push({
+          path: path.posix.join(destination, file.path),
+          content: file.content,
+        });
+
+        if (batch.length >= WRITE_BATCH_SIZE) {
+          await sandbox.writeFiles(batch);
+          batch = [];
+        }
+      }
+
+      // Write remaining files
+      if (batch.length > 0) {
+        await sandbox.writeFiles(batch);
+      }
+    })();
+  } else {
+    // No external sandbox - use just-bash
     usingJustBash = true;
+
+    if (options.uploadDirectory && !options.files) {
+      // Use OverlayFs for uploadDirectory (avoids loading all files into memory)
+      const overlayRoot = path.resolve(options.uploadDirectory.source);
+      const result = await createJustBashSandbox({
+        overlayRoot,
+      });
+      sandbox = result;
+
+      // Get file paths without loading content (for tool prompt)
+      fileList = await getFilePaths({
+        uploadDirectory: options.uploadDirectory,
+      });
+
+      // Check file limit (even for OverlayFs, we list files for the tool prompt)
+      if (maxFiles > 0 && fileList.length > maxFiles) {
+        throw new Error(
+          `Too many files: ${fileList.length} files exceeds the limit of ${maxFiles}. ` +
+            `Either increase maxFiles or use a more restrictive include pattern in uploadDirectory.`,
+        );
+      }
+
+      // Use the OverlayFs mount point as working directory
+      if (result.mountPoint) {
+        workingDir = result.mountPoint;
+      }
+    } else {
+      // Load files into memory for in-memory filesystem
+      // For just-bash we need all files upfront, but stream to avoid peak memory
+      const filesWithDestination: Record<string, string> = {};
+
+      for await (const file of streamFiles({
+        files: options.files,
+        uploadDirectory: options.uploadDirectory,
+      })) {
+        const absolutePath = path.posix.join(destination, file.path);
+        filesWithDestination[absolutePath] = file.content.toString("utf-8");
+      }
+
+      fileList = await getFilePaths({
+        files: options.files,
+        uploadDirectory: options.uploadDirectory,
+      });
+
+      // Check file limit
+      if (maxFiles > 0 && fileList.length > maxFiles) {
+        throw new Error(
+          `Too many files to load: ${fileList.length} files exceeds the limit of ${maxFiles}. ` +
+            `Either increase maxFiles, use a more restrictive include pattern in uploadDirectory, ` +
+            `or provide your own sandbox with files already written.`,
+        );
+      }
+
+      sandbox = await createJustBashSandbox({
+        files: filesWithDestination,
+        cwd: destination,
+      });
+    }
   }
 
   // 4. Discover available tools and generate prompt
-  const fileList = Object.keys(loadedFiles);
   const [toolPrompt, _] = await Promise.all([
     createToolPrompt({
       sandbox,
@@ -112,7 +191,7 @@ export async function createBashTool(
   // 5. Create tools
   const bash = createBashExecuteTool({
     sandbox,
-    cwd: destination,
+    cwd: workingDir,
     files: fileList,
     toolPrompt,
     extraInstructions: options.extraInstructions,
@@ -123,8 +202,8 @@ export async function createBashTool(
 
   const tools = {
     bash,
-    readFile: createReadFileTool({ sandbox, cwd: destination }),
-    writeFile: createWriteFileTool({ sandbox, cwd: destination }),
+    readFile: createReadFileTool({ sandbox, cwd: workingDir }),
+    writeFile: createWriteFileTool({ sandbox, cwd: workingDir }),
   };
 
   return { bash, tools, sandbox };

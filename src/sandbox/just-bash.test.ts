@@ -94,6 +94,30 @@ describe("wrapJustBash", () => {
       { path: "/other/file.txt", content: "other content" },
     ]);
   });
+
+  it("wraps writeFiles with Buffer content", async () => {
+    const writtenFiles: Array<{ path: string; content: string }> = [];
+    const mockBash = {
+      exec: async () => ({ stdout: "", stderr: "", exitCode: 0 }),
+      fs: {
+        readFile: async () => "",
+        writeFile: async (path: string, content: string) => {
+          writtenFiles.push({ path, content });
+        },
+      },
+    };
+
+    const sandbox = wrapJustBash(mockBash);
+    await sandbox.writeFiles([
+      { path: "/binary.bin", content: Buffer.from("binary data") },
+      { path: "/text.txt", content: "string data" },
+    ]);
+
+    expect(writtenFiles).toEqual([
+      { path: "/binary.bin", content: "binary data" },
+      { path: "/text.txt", content: "string data" },
+    ]);
+  });
 });
 
 describe("duck-typing disambiguation", () => {

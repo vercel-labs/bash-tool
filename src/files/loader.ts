@@ -10,43 +10,82 @@ export interface LoadFilesOptions {
   };
 }
 
+export interface FileEntry {
+  path: string;
+  content: Buffer;
+}
+
 /**
- * Load files from inline definitions and/or a directory on disk.
- * Returns a record of relative paths to file contents.
+ * Stream files from inline definitions and/or a directory on disk.
+ * Yields files one at a time to avoid loading everything into memory.
  * If both are provided, inline files take precedence (override directory files).
  */
-export async function loadFiles(
+export async function* streamFiles(
   options: LoadFilesOptions,
-): Promise<Record<string, string>> {
-  const result: Record<string, string> = {};
+): AsyncGenerator<FileEntry> {
+  const yieldedPaths = new Set<string>();
 
-  // Load from directory first (so inline can override)
+  // Yield inline files first (they take precedence)
+  if (options.files) {
+    for (const [relativePath, content] of Object.entries(options.files)) {
+      yieldedPaths.add(relativePath);
+      yield { path: relativePath, content: Buffer.from(content) };
+    }
+  }
+
+  // Stream from directory (skip files already yielded from inline)
   if (options.uploadDirectory) {
     const { source, include = "**/*" } = options.uploadDirectory;
     const absoluteSource = path.resolve(source);
 
-    const files = await fg(include, {
+    const foundPaths = await fg(include, {
       cwd: absoluteSource,
       dot: true,
       onlyFiles: true,
       ignore: ["**/node_modules/**", "**/.git/**"],
     });
 
-    await Promise.all(
-      files.map(async (relativePath) => {
-        const absolutePath = path.join(absoluteSource, relativePath);
-        const content = await fs.readFile(absolutePath, "utf-8");
-        result[relativePath] = content;
-      }),
-    );
+    for (const relativePath of foundPaths) {
+      if (yieldedPaths.has(relativePath)) {
+        continue; // Skip - inline file takes precedence
+      }
+      const absolutePath = path.join(absoluteSource, relativePath);
+      const content = await fs.readFile(absolutePath);
+      yield { path: relativePath, content };
+    }
+  }
+}
+
+/**
+ * Get file paths from options without loading content.
+ * Useful for tool prompts and OverlayFs.
+ */
+export async function getFilePaths(
+  options: LoadFilesOptions,
+): Promise<string[]> {
+  const paths: string[] = [];
+
+  if (options.uploadDirectory) {
+    const { source, include = "**/*" } = options.uploadDirectory;
+    const absoluteSource = path.resolve(source);
+
+    const foundPaths = await fg(include, {
+      cwd: absoluteSource,
+      dot: true,
+      onlyFiles: true,
+      ignore: ["**/node_modules/**", "**/.git/**"],
+    });
+    paths.push(...foundPaths);
   }
 
-  // Merge inline files (override directory files)
+  // Add inline file paths (may override some from directory)
   if (options.files) {
-    for (const [relativePath, content] of Object.entries(options.files)) {
-      result[relativePath] = content;
+    for (const relativePath of Object.keys(options.files)) {
+      if (!paths.includes(relativePath)) {
+        paths.push(relativePath);
+      }
     }
   }
 
-  return result;
+  return paths;
 }

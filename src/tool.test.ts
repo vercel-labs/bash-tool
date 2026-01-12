@@ -65,6 +65,15 @@ vi.mock("just-bash", () => ({
       return { stdout: "", stderr: "", exitCode: 0 };
     }
   },
+  OverlayFs: class MockOverlayFs {
+    private root: string;
+    constructor(options: { root: string }) {
+      this.root = options.root;
+    }
+    getMountPoint() {
+      return `/home/user/project`;
+    }
+  },
 }));
 
 import { createBashTool } from "./tool.js";
@@ -306,9 +315,9 @@ describe("createBashTool", () => {
 
     expect(sandbox).toBe(customSandbox);
 
-    // Files should be written to custom sandbox in a single call
+    // Files should be written to custom sandbox in a single call (as Buffer)
     expect(customSandbox.writeFiles).toHaveBeenCalledWith([
-      { path: "/workspace/test.txt", content: "content" },
+      { path: "/workspace/test.txt", content: Buffer.from("content") },
     ]);
 
     // Tools should use custom sandbox
@@ -318,6 +327,37 @@ describe("createBashTool", () => {
       opts,
     )) as CommandResult;
     expect(result.stdout).toBe("custom");
+  });
+
+  it("writes files in batches of 20 to custom sandbox", async () => {
+    const customSandbox = {
+      executeCommand: vi
+        .fn()
+        .mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 }),
+      readFile: vi.fn().mockResolvedValue(""),
+      writeFiles: vi.fn().mockResolvedValue(undefined),
+    };
+
+    // Create 45 files (should result in 3 batches: 20 + 20 + 5)
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 45; i++) {
+      files[`file${i}.txt`] = `content${i}`;
+    }
+
+    await createBashTool({
+      sandbox: customSandbox,
+      files,
+    });
+
+    // Should have been called 3 times (batches of 20, 20, 5)
+    expect(customSandbox.writeFiles).toHaveBeenCalledTimes(3);
+
+    // First batch should have 20 files
+    expect(customSandbox.writeFiles.mock.calls[0][0]).toHaveLength(20);
+    // Second batch should have 20 files
+    expect(customSandbox.writeFiles.mock.calls[1][0]).toHaveLength(20);
+    // Third batch should have 5 files
+    expect(customSandbox.writeFiles.mock.calls[2][0]).toHaveLength(5);
   });
 });
 
@@ -579,5 +619,102 @@ Common operations:
   cat <file>          # View file contents
 
 Always run tests first.`);
+  });
+});
+
+describe("createBashTool maxFiles limit", () => {
+  beforeEach(() => {
+    for (const key of Object.keys(mockFiles)) {
+      delete mockFiles[key];
+    }
+  });
+
+  it("throws error when exceeding default maxFiles limit with inline files", async () => {
+    // Create more than 1000 files
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 1001; i++) {
+      files[`file${i}.txt`] = `content${i}`;
+    }
+
+    await expect(createBashTool({ files })).rejects.toThrow(
+      /Too many files to load: 1001 files exceeds the limit of 1000/,
+    );
+  });
+
+  it("throws error when exceeding custom maxFiles limit", async () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 11; i++) {
+      files[`file${i}.txt`] = `content${i}`;
+    }
+
+    await expect(createBashTool({ files, maxFiles: 10 })).rejects.toThrow(
+      /Too many files to load: 11 files exceeds the limit of 10/,
+    );
+  });
+
+  it("accepts exactly maxFiles number of files", async () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 10; i++) {
+      files[`file${i}.txt`] = `content${i}`;
+    }
+
+    // Should not throw
+    const { tools } = await createBashTool({ files, maxFiles: 10 });
+    expect(tools.bash).toBeDefined();
+  });
+
+  it("allows disabling maxFiles limit with 0", async () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 100; i++) {
+      files[`file${i}.txt`] = `content${i}`;
+    }
+
+    // Should not throw even with many files when limit is disabled
+    const { tools } = await createBashTool({ files, maxFiles: 0 });
+    expect(tools.bash).toBeDefined();
+  });
+
+  it("throws error with custom sandbox when exceeding maxFiles", async () => {
+    const customSandbox = {
+      executeCommand: vi
+        .fn()
+        .mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 }),
+      readFile: vi.fn().mockResolvedValue(""),
+      writeFiles: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 6; i++) {
+      files[`file${i}.txt`] = `content${i}`;
+    }
+
+    await expect(
+      createBashTool({
+        sandbox: customSandbox,
+        files,
+        maxFiles: 5,
+      }),
+    ).rejects.toThrow(
+      /Too many files to upload: 6 files exceeds the limit of 5/,
+    );
+
+    // writeFiles should not have been called since error was thrown before streaming
+    expect(customSandbox.writeFiles).not.toHaveBeenCalled();
+  });
+
+  it("error message guides user to handle upload themselves", async () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 11; i++) {
+      files[`file${i}.txt`] = `content${i}`;
+    }
+
+    try {
+      await createBashTool({ files, maxFiles: 10 });
+      expect.fail("Should have thrown");
+    } catch (error) {
+      const message = (error as Error).message;
+      expect(message).toContain("increase maxFiles");
+      expect(message).toContain("restrictive include pattern");
+    }
   });
 });

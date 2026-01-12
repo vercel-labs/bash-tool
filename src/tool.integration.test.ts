@@ -1,5 +1,8 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import type { ToolExecutionOptions } from "ai";
-import { assert, describe, expect, it } from "vitest";
+import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
 import { createBashTool } from "./tool.js";
 import type { CommandResult } from "./types.js";
 
@@ -232,5 +235,115 @@ describe("createBashTool integration", () => {
       expect(result.exitCode).toBe(0);
       expect(result.stdout.trim()).toBe("Hello, World!");
     });
+  });
+});
+
+/**
+ * Integration tests for OverlayFs mode (uploadDirectory without external sandbox).
+ * This uses just-bash's OverlayFs for copy-on-write over a real directory.
+ */
+describe("createBashTool OverlayFs integration", () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "bash-tool-overlay-"));
+
+    // Create test files on disk
+    await fs.mkdir(path.join(tempDir, "src"), { recursive: true });
+    await fs.writeFile(
+      path.join(tempDir, "src/index.ts"),
+      "export const x = 1;",
+    );
+    await fs.writeFile(
+      path.join(tempDir, "package.json"),
+      '{"name": "overlay-test"}',
+    );
+  });
+
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("reads files from disk via OverlayFs", async () => {
+    const { tools } = await createBashTool({
+      uploadDirectory: { source: tempDir },
+    });
+
+    assert(tools.bash.execute, "bash.execute should be defined");
+    const result = (await tools.bash.execute(
+      { command: "cat src/index.ts" },
+      opts,
+    )) as CommandResult;
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe("export const x = 1;");
+  });
+
+  it("lists files from disk", async () => {
+    const { tools } = await createBashTool({
+      uploadDirectory: { source: tempDir },
+    });
+
+    assert(tools.bash.execute, "bash.execute should be defined");
+    const result = (await tools.bash.execute(
+      { command: "ls" },
+      opts,
+    )) as CommandResult;
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("src");
+    expect(result.stdout).toContain("package.json");
+  });
+
+  it("writes stay in memory (copy-on-write)", async () => {
+    const { tools } = await createBashTool({
+      uploadDirectory: { source: tempDir },
+    });
+
+    assert(tools.bash.execute, "bash.execute should be defined");
+
+    // Write a new file
+    await tools.bash.execute(
+      { command: 'echo "new content" > newfile.txt' },
+      opts,
+    );
+
+    // Can read the new file in sandbox
+    const catResult = (await tools.bash.execute(
+      { command: "cat newfile.txt" },
+      opts,
+    )) as CommandResult;
+    expect(catResult.exitCode).toBe(0);
+    expect(catResult.stdout.trim()).toBe("new content");
+
+    // But file doesn't exist on real disk
+    const diskPath = path.join(tempDir, "newfile.txt");
+    await expect(fs.access(diskPath)).rejects.toThrow();
+  });
+
+  it("uses correct working directory from mount point", async () => {
+    const { tools } = await createBashTool({
+      uploadDirectory: { source: tempDir },
+    });
+
+    assert(tools.bash.execute, "bash.execute should be defined");
+    const result = (await tools.bash.execute(
+      { command: "pwd" },
+      opts,
+    )) as CommandResult;
+
+    expect(result.exitCode).toBe(0);
+    // Should be at the overlay mount point, not /workspace
+    expect(result.stdout.trim()).toContain("/home/user/project");
+  });
+
+  it("filters files with include glob", async () => {
+    const { tools } = await createBashTool({
+      uploadDirectory: { source: tempDir, include: "**/*.ts" },
+    });
+
+    // The tool prompt should only include .ts files
+    expect(tools.bash.description).toContain("src/index.ts");
+    expect(tools.bash.description).not.toContain("package.json");
   });
 });

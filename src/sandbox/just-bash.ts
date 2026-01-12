@@ -24,32 +24,60 @@ export interface JustBashSandboxOptions {
   files?: Record<string, string>;
   /** Working directory */
   cwd?: string;
+  /**
+   * Use OverlayFs with this directory as root.
+   * Reads come from disk, writes stay in memory.
+   * When provided, `files` is ignored.
+   */
+  overlayRoot?: string;
 }
 
 /**
  * Creates a Sandbox implementation using just-bash (virtual bash environment).
  * Dynamically imports just-bash to keep it as an optional peer dependency.
+ *
+ * When `overlayRoot` is provided, uses OverlayFs for copy-on-write over a real directory.
+ * This avoids loading all files into memory - reads come from disk, writes stay in memory.
  */
 export async function createJustBashSandbox(
   options: JustBashSandboxOptions = {},
-): Promise<Sandbox> {
+): Promise<Sandbox & { mountPoint?: string }> {
   // Dynamic import to handle optional peer dependency
   let Bash: typeof import("just-bash").Bash;
+  let OverlayFs: typeof import("just-bash").OverlayFs | undefined;
+
   try {
     const module = await import("just-bash");
     Bash = module.Bash;
+    OverlayFs = module.OverlayFs;
   } catch {
     throw new Error(
       'just-bash is not installed. Either install it with "npm install just-bash" or provide your own sandbox via the sandbox option.',
     );
   }
 
-  const bashEnv = new Bash({
-    files: options.files,
-    cwd: options.cwd,
-  });
+  let bashEnv: InstanceType<typeof Bash>;
+  let mountPoint: string | undefined;
+
+  if (options.overlayRoot && OverlayFs) {
+    // Use OverlayFs for copy-on-write over a real directory
+    const overlay = new OverlayFs({ root: options.overlayRoot });
+    mountPoint = overlay.getMountPoint();
+    bashEnv = new Bash({
+      fs: overlay,
+      cwd: options.cwd ?? mountPoint,
+    });
+  } else {
+    // Use in-memory filesystem with provided files
+    bashEnv = new Bash({
+      files: options.files,
+      cwd: options.cwd,
+    });
+  }
 
   return {
+    mountPoint,
+
     async executeCommand(command: string): Promise<CommandResult> {
       const result = await bashEnv.exec(command);
       return {
@@ -64,10 +92,14 @@ export async function createJustBashSandbox(
     },
 
     async writeFiles(
-      files: Array<{ path: string; content: string }>,
+      files: Array<{ path: string; content: string | Buffer }>,
     ): Promise<void> {
       for (const file of files) {
-        await bashEnv.fs.writeFile(file.path, file.content);
+        const content =
+          typeof file.content === "string"
+            ? file.content
+            : file.content.toString("utf-8");
+        await bashEnv.fs.writeFile(file.path, content);
       }
     },
   };
@@ -102,10 +134,14 @@ export function wrapJustBash(bashInstance: JustBashLike): Sandbox {
     },
 
     async writeFiles(
-      files: Array<{ path: string; content: string }>,
+      files: Array<{ path: string; content: string | Buffer }>,
     ): Promise<void> {
       for (const file of files) {
-        await bashInstance.fs.writeFile(file.path, file.content);
+        const content =
+          typeof file.content === "string"
+            ? file.content
+            : file.content.toString("utf-8");
+        await bashInstance.fs.writeFile(file.path, content);
       }
     },
   };
