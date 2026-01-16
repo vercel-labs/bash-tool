@@ -49,8 +49,8 @@ description: Process PDF files
     expect(skills[0].name).toBe("pdf");
     expect(skills[0].files).toContain("SKILL.md");
     expect(loadSkill).toBeDefined();
-    expect(files["/skills/pdf-skill/SKILL.md"]).toContain("pdf");
-    expect(instructions).toContain("pdf-skill");
+    expect(files["skills/pdf-skill/SKILL.md"]).toContain("pdf");
+    expect(instructions).toContain("/workspace/skills/pdf-skill");
   });
 
   it("collects all skill files", async () => {
@@ -67,8 +67,8 @@ description: Test skill
 
     const { files } = await createSkillTool({ skillsDirectory: testDir });
 
-    expect(files["/skills/my-skill/SKILL.md"]).toContain("my-skill");
-    expect(files["/skills/my-skill/script.py"]).toBe('print("hello")');
+    expect(files["skills/my-skill/SKILL.md"]).toContain("my-skill");
+    expect(files["skills/my-skill/script.py"]).toBe('print("hello")');
   });
 
   it("loadSkill returns skill instructions", async () => {

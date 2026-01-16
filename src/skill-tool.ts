@@ -8,7 +8,8 @@ import type {
 } from "./skills/types.js";
 import { createLoadSkillTool } from "./tools/load-skill.js";
 
-const DEFAULT_DESTINATION = "/skills";
+const DEFAULT_DESTINATION = "skills";
+const DEFAULT_WORKSPACE_PATH = "/workspace";
 
 /**
  * Creates a skill toolkit for AI agents.
@@ -43,12 +44,18 @@ const DEFAULT_DESTINATION = "/skills";
 export async function createSkillTool(
   options: CreateSkillToolOptions,
 ): Promise<SkillToolkit> {
-  const { skillsDirectory, destination = DEFAULT_DESTINATION } = options;
+  const {
+    skillsDirectory,
+    destination = DEFAULT_DESTINATION,
+    workspacePath = DEFAULT_WORKSPACE_PATH,
+  } = options;
+
+  const sandboxBasePath = path.posix.join(workspacePath, destination);
 
   // Discover all skills and collect their files
   const discoveredSkills = await discoverSkills({
     skillsDirectory,
-    sandboxDestination: destination,
+    sandboxDestination: sandboxBasePath,
   });
 
   // Enrich skills with file lists and collect all files
@@ -65,13 +72,14 @@ export async function createSkillTool(
     });
 
     // Read and collect all files for this skill
+    const skillDirName = path.basename(skill.localPath);
     for (const file of skillFiles) {
       const localFilePath = path.join(skill.localPath, file);
-      const sandboxFilePath = `${skill.sandboxPath}/${file}`;
+      const relativeFilePath = path.posix.join(destination, skillDirName, file);
 
       try {
         const content = await fs.readFile(localFilePath, "utf-8");
-        allFiles[sandboxFilePath] = content;
+        allFiles[relativeFilePath] = content;
       } catch {
         // Skip files that can't be read as text
       }
