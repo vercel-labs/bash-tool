@@ -1,4 +1,12 @@
 export type { JustBashLike } from "./sandbox/just-bash.js";
+export { createSkillTool } from "./skill-tool.js";
+export type {
+  CreateSkillToolOptions,
+  DiscoveredSkill,
+  Skill,
+  SkillMetadata,
+  SkillToolkit,
+} from "./skills/types.js";
 export { createBashTool } from "./tool.js";
 export { DEFAULT_MAX_OUTPUT_LENGTH } from "./tools/bash.js";
 export type {
