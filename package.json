@@ -22,7 +22,7 @@
   "sideEffects": false,
   "scripts": {
     "build": "tsc -p tsconfig.build.json && sed '1,/^-->/d' AGENTS.npm.md > dist/AGENTS.md",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.examples.json",
     "test": "vitest --exclude 'src/tool.vercel.integration.test.ts'",
     "test:run": "vitest run --exclude 'src/tool.vercel.integration.test.ts'",
     "test:vercel": "vitest run src/tool.vercel.integration.test.ts --sequence.concurrent",
@@ -57,6 +57,7 @@
   },
   "dependencies": {
     "fast-glob": "^3.3.2",
+    "gray-matter": "^4.0.3",
     "zod": "^3.23.8"
   },
   "devDependencies": {

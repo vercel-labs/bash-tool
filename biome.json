@@ -12,6 +12,6 @@
     "indentWidth": 2
   },
   "files": {
-    "includes": ["src/**", "*.json", "*.ts"]
+    "includes": ["src/**", "examples/**", "*.json", "*.ts"]
   }
 }
