@@ -123,7 +123,7 @@ export interface CreateBashToolOptions {
    */
   onBeforeBashCall?: (
     input: BeforeBashCallInput,
-  ) => BeforeBashCallOutput | void;
+  ) => BeforeBashCallOutput | undefined;
 
   /**
    * Callback invoked after bash command execution.
@@ -140,7 +140,7 @@ export interface CreateBashToolOptions {
    */
   onAfterBashCall?: (
     input: AfterBashCallInput,
-  ) => AfterBashCallOutput | void;
+  ) => AfterBashCallOutput | undefined;
 
   /**
    * Maximum length (in characters) for stdout and stderr output.

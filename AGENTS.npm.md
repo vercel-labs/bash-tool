@@ -88,11 +88,11 @@ const { tools } = await createBashTool({ sandbox: existingSandbox });
 const { tools } = await createBashTool({
   onBeforeBashCall: ({ command }) => {
     console.log("Running:", command);
-    // Return modified command or undefined to proceed unchanged
+    return undefined; // Or return { command: modifiedCommand } to change it
   },
   onAfterBashCall: ({ command, result }) => {
     console.log(`Exit: ${result.exitCode}`);
-    // Return modified result or undefined to proceed unchanged
+    return undefined; // Or return { result: modifiedResult } to change it
   },
 });
 ```

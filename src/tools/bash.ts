@@ -27,11 +27,11 @@ export interface CreateBashToolOptions {
   /** Callback before command execution, can modify the command */
   onBeforeBashCall?: (
     input: BeforeBashCallInput,
-  ) => BeforeBashCallOutput | void;
+  ) => BeforeBashCallOutput | undefined;
   /** Callback after command execution, can modify the result */
   onAfterBashCall?: (
     input: AfterBashCallInput,
-  ) => AfterBashCallOutput | void;
+  ) => AfterBashCallOutput | undefined;
   /**
    * Maximum length (in characters) for stdout and stderr output.
    * If output exceeds this limit, it will be truncated with a message.
