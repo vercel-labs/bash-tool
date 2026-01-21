@@ -6,7 +6,7 @@ import type {
   Skill,
   SkillToolkit,
 } from "./skills/types.js";
-import { createLoadSkillTool } from "./tools/load-skill.js";
+import { createSkillTool } from "./tools/skill.js";
 
 const DEFAULT_DESTINATION = "skills";
 
@@ -25,7 +25,7 @@ const DEFAULT_DESTINATION = "skills";
  * } from "bash-tool";
  *
  * // Discover skills and get files
- * const { loadSkill, skills, files, instructions } = await createSkillTool({
+ * const { skill, skills, files, instructions } = await createSkillTool({
  *   skillsDirectory: "./skills",
  * });
  *
@@ -38,7 +38,7 @@ const DEFAULT_DESTINATION = "skills";
  * // Use with AI SDK
  * const result = await generateText({
  *   model,
- *   tools: { loadSkill, ...tools },
+ *   tools: { skill, ...tools },
  *   prompt: "Process this data using the csv skill",
  * });
  * ```
@@ -84,14 +84,14 @@ export async function experimental_createSkillTool(
     }
   }
 
-  // Create loadSkill tool
-  const loadSkill = createLoadSkillTool({ skills });
+  // Create skill tool
+  const skill = createSkillTool({ skills });
 
   // Generate instructions for bash tool
   const instructions = generateSkillInstructions(skills);
 
   return {
-    loadSkill,
+    skill,
     skills,
     files: allFiles,
     instructions,
@@ -117,7 +117,7 @@ function generateSkillInstructions(skills: Skill[]): string {
 
   lines.push("");
   lines.push("To use a skill:");
-  lines.push("  1. Call loadSkill to get the skill's instructions");
+  lines.push("  1. Call skill to get the skill's instructions");
   lines.push("  2. Run scripts from the skill directory with bash");
 
   return lines.join("\n");

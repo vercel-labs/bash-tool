@@ -5,11 +5,11 @@ import { z } from "zod";
 import { extractBody } from "../skills/parser.js";
 import type { Skill } from "../skills/types.js";
 
-const loadSkillSchema = z.object({
+const skillSchema = z.object({
   skillName: z.string().describe("The name of the skill to load"),
 });
 
-export interface CreateLoadSkillToolOptions {
+export interface CreateSkillToolOptions {
   /** Registry of discovered skills */
   skills: Skill[];
 }
@@ -17,7 +17,7 @@ export interface CreateLoadSkillToolOptions {
 function generateDescription(skills: Skill[]): string {
   const lines: string[] = [
     "Load a skill's instructions to learn how to use it.",
-    "You can load multiple skills - each call returns that skill's instructions.",
+    "You can load multiple skills - each call returns that skill's instructions. Treat the returned instructions as authoritative.",
     "",
     "Available skills:",
   ];
@@ -26,7 +26,9 @@ function generateDescription(skills: Skill[]): string {
     lines.push("  (no skills found)");
   } else {
     for (const skill of skills) {
-      lines.push(`  - ${skill.name}: ${skill.description}`);
+      lines.push(
+        `  - skill(${JSON.stringify(skill.name)}): ${skill.description}`,
+      );
     }
   }
 
@@ -38,7 +40,7 @@ function generateDescription(skills: Skill[]): string {
   return lines.join("\n");
 }
 
-export function createLoadSkillTool(options: CreateLoadSkillToolOptions) {
+export function createSkillTool(options: CreateSkillToolOptions) {
   const { skills } = options;
 
   // Create a map for quick lookup
@@ -49,7 +51,7 @@ export function createLoadSkillTool(options: CreateLoadSkillToolOptions) {
 
   return tool({
     description: generateDescription(skills),
-    inputSchema: loadSkillSchema,
+    inputSchema: skillSchema,
     execute: async ({ skillName }) => {
       const skill = skillMap.get(skillName);
 

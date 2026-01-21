@@ -9,7 +9,7 @@ import { createBashTool } from "./tool.js";
 const opts: ToolExecutionOptions = { toolCallId: "test", messages: [] };
 
 // Helper types for test assertions
-interface LoadSkillResult {
+interface SkillResult {
   success: boolean;
   error?: string;
   skill?: { name: string; description: string; path: string };
@@ -41,14 +41,14 @@ description: Process PDF files
 # PDF Processing`,
     );
 
-    const { loadSkill, skills, files, instructions } = await createSkillTool({
+    const { skill, skills, files, instructions } = await createSkillTool({
       skillsDirectory: testDir,
     });
 
     expect(skills).toHaveLength(1);
     expect(skills[0].name).toBe("pdf");
     expect(skills[0].files).toContain("SKILL.md");
-    expect(loadSkill).toBeDefined();
+    expect(skill).toBeDefined();
     expect(files["./skills/pdf-skill/SKILL.md"]).toContain("pdf");
     expect(instructions).toContain("./skills/pdf-skill");
   });
@@ -71,7 +71,7 @@ description: Test skill
     expect(files["./skills/my-skill/script.py"]).toBe('print("hello")');
   });
 
-  it("loadSkill returns skill instructions", async () => {
+  it("skill returns skill instructions", async () => {
     const skillDir = path.join(testDir, "test-skill");
     await fs.mkdir(skillDir);
     await fs.writeFile(
@@ -86,42 +86,42 @@ description: Test skill
 These are the instructions.`,
     );
 
-    const { loadSkill } = await createSkillTool({
+    const { skill } = await createSkillTool({
       skillsDirectory: testDir,
     });
 
-    assert(loadSkill.execute, "loadSkill.execute should be defined");
-    const result = (await loadSkill.execute(
+    assert(skill.execute, "skill.execute should be defined");
+    const result = (await skill.execute(
       { skillName: "test" },
       opts,
-    )) as LoadSkillResult;
+    )) as SkillResult;
 
     expect(result.success).toBe(true);
     expect(result.instructions).toContain("# Instructions");
   });
 
-  it("loadSkill returns error for unknown skill", async () => {
-    const { loadSkill } = await createSkillTool({
+  it("skill returns error for unknown skill", async () => {
+    const { skill } = await createSkillTool({
       skillsDirectory: testDir,
     });
 
-    assert(loadSkill.execute, "loadSkill.execute should be defined");
-    const result = (await loadSkill.execute(
+    assert(skill.execute, "skill.execute should be defined");
+    const result = (await skill.execute(
       { skillName: "nonexistent" },
       opts,
-    )) as LoadSkillResult;
+    )) as SkillResult;
 
     expect(result.success).toBe(false);
     expect(result.error).toContain("not found");
   });
 
   it("works with empty skills directory", async () => {
-    const { loadSkill, skills, files, instructions } = await createSkillTool({
+    const { skill, skills, files, instructions } = await createSkillTool({
       skillsDirectory: testDir,
     });
 
     expect(skills).toHaveLength(0);
-    expect(loadSkill).toBeDefined();
+    expect(skill).toBeDefined();
     expect(Object.keys(files)).toHaveLength(0);
     expect(instructions).toBe("");
   });

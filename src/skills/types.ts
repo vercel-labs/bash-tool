@@ -1,4 +1,4 @@
-import type { createLoadSkillTool } from "../tools/load-skill.js";
+import type { createSkillTool } from "../tools/skill.js";
 
 /**
  * Skill metadata parsed from SKILL.md frontmatter.
@@ -52,7 +52,7 @@ export interface CreateSkillToolOptions {
  */
 export interface SkillToolkit {
   /** Tool to load a skill's instructions into context */
-  loadSkill: ReturnType<typeof createLoadSkillTool>;
+  skill: ReturnType<typeof createSkillTool>;
   /** Registry of discovered skills */
   skills: Skill[];
   /** Files to pass to createBashTool (path -> content) */

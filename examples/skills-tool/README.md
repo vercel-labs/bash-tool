@@ -26,8 +26,6 @@ The example includes two bash-based skills:
 npx tsx examples/skills-tool/index.ts
 ```
 
-Requires `ANTHROPIC_API_KEY` environment variable.
-
 ## Code Overview
 
 ```typescript

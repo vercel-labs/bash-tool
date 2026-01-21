@@ -16,7 +16,7 @@ import {
 
 async function main() {
   // Discover skills and get files to upload
-  const { loadSkill, skills, files, instructions } = await createSkillTool({
+  const { skill, skills, files, instructions } = await createSkillTool({
     skillsDirectory: path.join(import.meta.dirname, "skills"),
   });
 
@@ -36,17 +36,17 @@ async function main() {
   const agent = new ToolLoopAgent({
     model: "anthropic/claude-haiku-4.5",
     tools: {
-      loadSkill,
+      skill,
       bash: tools.bash,
     },
     instructions: `You are a data processing assistant with access to skills.
-Use loadSkill to discover how to use a skill, then use bash to run its scripts.
+Use the skill tool to discover how to use a skill, then use bash to run its scripts.
 Skills are located at ./skills/<skill-name>/.`,
     onStepFinish: ({ toolCalls, toolResults }) => {
       if (toolCalls && toolCalls.length > 0) {
         for (const call of toolCalls) {
           console.log(`Tool: ${call.toolName}`);
-          if (call.toolName === "loadSkill" && "input" in call) {
+          if (call.toolName === "skill" && "input" in call) {
             const input = call.input as { skillName: string };
             console.log(`  Loading skill: ${input.skillName}`);
           } else if (call.toolName === "bash" && "input" in call) {
