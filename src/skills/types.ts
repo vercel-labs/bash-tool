@@ -41,18 +41,10 @@ export interface CreateSkillToolOptions {
 
   /**
    * Relative path within the workspace where skills will be placed.
-   * This path is relative to createBashTool's destination.
    * @default "skills"
-   * @example "skills" -> files at /workspace/skills/...
+   * @example "skills" -> files at ./skills/...
    */
   destination?: string;
-
-  /**
-   * The workspace path used by createBashTool.
-   * This is needed to generate correct absolute paths for the LLM.
-   * @default "/workspace"
-   */
-  workspacePath?: string;
 }
 
 /**

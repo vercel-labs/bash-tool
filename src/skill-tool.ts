@@ -9,7 +9,6 @@ import type {
 import { createLoadSkillTool } from "./tools/load-skill.js";
 
 const DEFAULT_DESTINATION = "skills";
-const DEFAULT_WORKSPACE_PATH = "/workspace";
 
 /**
  * Creates a skill toolkit for AI agents.
@@ -20,7 +19,10 @@ const DEFAULT_WORKSPACE_PATH = "/workspace";
  *
  * @example
  * ```typescript
- * import { createSkillTool, createBashTool } from "bash-tool";
+ * import {
+ *   experimental_createSkillTool as createSkillTool,
+ *   createBashTool,
+ * } from "bash-tool";
  *
  * // Discover skills and get files
  * const { loadSkill, skills, files, instructions } = await createSkillTool({
@@ -41,21 +43,17 @@ const DEFAULT_WORKSPACE_PATH = "/workspace";
  * });
  * ```
  */
-export async function createSkillTool(
+export async function experimental_createSkillTool(
   options: CreateSkillToolOptions,
 ): Promise<SkillToolkit> {
-  const {
-    skillsDirectory,
-    destination = DEFAULT_DESTINATION,
-    workspacePath = DEFAULT_WORKSPACE_PATH,
-  } = options;
-
-  const sandboxBasePath = path.posix.join(workspacePath, destination);
+  const { skillsDirectory, destination = DEFAULT_DESTINATION } = options;
 
   // Discover all skills and collect their files
+  // sandboxDestination uses explicit relative path (e.g., "./skills") - works with any destination
+  const relativeDestination = `./${destination}`;
   const discoveredSkills = await discoverSkills({
     skillsDirectory,
-    sandboxDestination: sandboxBasePath,
+    sandboxDestination: relativeDestination,
   });
 
   // Enrich skills with file lists and collect all files
@@ -75,7 +73,7 @@ export async function createSkillTool(
     const skillDirName = path.basename(skill.localPath);
     for (const file of skillFiles) {
       const localFilePath = path.join(skill.localPath, file);
-      const relativeFilePath = path.posix.join(destination, skillDirName, file);
+      const relativeFilePath = `./${path.posix.join(destination, skillDirName, file)}`;
 
       try {
         const content = await fs.readFile(localFilePath, "utf-8");

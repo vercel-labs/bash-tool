@@ -1,5 +1,5 @@
 export type { JustBashLike } from "./sandbox/just-bash.js";
-export { createSkillTool } from "./skill-tool.js";
+export { experimental_createSkillTool } from "./skill-tool.js";
 export type {
   CreateSkillToolOptions,
   DiscoveredSkill,

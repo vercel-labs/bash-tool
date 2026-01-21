@@ -43,7 +43,7 @@ const result = await agent.generate({
 ## Key Behaviors
 
 1. **Default sandbox is just-bash** - Install `just-bash` or provide your own sandbox
-2. **Working directory defaults to `./workspace`** - All files written relative to `destination`
+2. **Working directory defaults to `/workspace`** - All files written relative to `destination`
 3. **Files are written before tools are returned** - Sandbox is pre-populated
 4. **Tool descriptions include file list** - LLM sees available files in bash tool description
 5. **No `stop()` method** - Sandbox lifecycle is managed externally

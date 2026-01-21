@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type { ToolExecutionOptions } from "ai";
 import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
-import { createSkillTool } from "./skill-tool.js";
+import { experimental_createSkillTool as createSkillTool } from "./skill-tool.js";
 import { createBashTool } from "./tool.js";
 
 // AI SDK tool execute requires (args, options) - we provide test options
@@ -49,8 +49,8 @@ description: Process PDF files
     expect(skills[0].name).toBe("pdf");
     expect(skills[0].files).toContain("SKILL.md");
     expect(loadSkill).toBeDefined();
-    expect(files["skills/pdf-skill/SKILL.md"]).toContain("pdf");
-    expect(instructions).toContain("/workspace/skills/pdf-skill");
+    expect(files["./skills/pdf-skill/SKILL.md"]).toContain("pdf");
+    expect(instructions).toContain("./skills/pdf-skill");
   });
 
   it("collects all skill files", async () => {
@@ -67,8 +67,8 @@ description: Test skill
 
     const { files } = await createSkillTool({ skillsDirectory: testDir });
 
-    expect(files["skills/my-skill/SKILL.md"]).toContain("my-skill");
-    expect(files["skills/my-skill/script.py"]).toBe('print("hello")');
+    expect(files["./skills/my-skill/SKILL.md"]).toContain("my-skill");
+    expect(files["./skills/my-skill/script.py"]).toBe('print("hello")');
   });
 
   it("loadSkill returns skill instructions", async () => {
@@ -154,7 +154,7 @@ description: Echo utility
 
     assert(tools.bash.execute, "bash.execute should be defined");
     const result = (await tools.bash.execute(
-      { command: "cat /workspace/skills/echo-skill/test.sh" },
+      { command: "cat ./skills/echo-skill/test.sh" },
       opts,
     )) as { stdout: string; stderr: string; exitCode: number };
 

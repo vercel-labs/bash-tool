@@ -32,7 +32,10 @@ Requires `ANTHROPIC_API_KEY` environment variable.
 
 ```typescript
 import { ToolLoopAgent } from "ai";
-import { createBashTool, createSkillTool } from "bash-tool";
+import {
+  experimental_createSkillTool as createSkillTool,
+  createBashTool,
+} from "bash-tool";
 
 // Discover skills and get files
 const { loadSkill, skills, files, instructions } = await createSkillTool({

@@ -9,7 +9,10 @@
 
 import path from "node:path";
 import { ToolLoopAgent } from "ai";
-import { createBashTool, createSkillTool } from "../../src/index.js";
+import {
+  createBashTool,
+  experimental_createSkillTool as createSkillTool,
+} from "../../src/index.js";
 
 async function main() {
   // Discover skills and get files to upload
@@ -38,7 +41,7 @@ async function main() {
     },
     instructions: `You are a data processing assistant with access to skills.
 Use loadSkill to discover how to use a skill, then use bash to run its scripts.
-Skills are located at /workspace/skills/<skill-name>/.`,
+Skills are located at ./skills/<skill-name>/.`,
     onStepFinish: ({ toolCalls, toolResults }) => {
       if (toolCalls && toolCalls.length > 0) {
         for (const call of toolCalls) {
