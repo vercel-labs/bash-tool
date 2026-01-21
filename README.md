@@ -177,7 +177,7 @@ const { tools } = await createBashTool({ sandbox: customSandbox });
 
 ## Skills (Experimental)
 
-Skills are modular capabilities that extend agent functionality. Each skill is a directory containing a `SKILL.md` file with instructions and optional scripts.
+[Skills](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) are modular capabilities that extend agent functionality. Each skill is a directory containing a `SKILL.md` file with instructions and optional scripts.
 
 ```typescript
 import {
@@ -204,9 +204,11 @@ const agent = new ToolLoopAgent({
 });
 ```
 
+[Full Example](./examples/skills-tool/) and see [Skills.sh for a directory of publicly available skills.](https://skills.sh/)
+
 ### Skill Directory Structure
 
-```
+```text
 skills/
 ├── csv/
 │   ├── SKILL.md         # Required: instructions with YAML frontmatter
@@ -220,30 +222,6 @@ skills/
 ```
 
 See the [example skills](./examples/skills-tool/skills/) for a complete reference.
-
-### SKILL.md Format
-
-```markdown
----
-name: csv
-description: Analyze and transform CSV files
----
-
-# CSV Processing
-
-Use `/skills/csv/scripts/analyze.sh <file>` to analyze a CSV file.
-```
-
-### How It Works
-
-1. `createSkillTool` discovers skills and returns:
-   - `skill` - Tool for the agent to load a skill's instructions on demand
-   - `files` - All skill files to pass to `createBashTool`
-   - `instructions` - Extra instructions listing available skills
-
-2. The agent sees skill names in the `skill` tool description
-3. When the agent needs a skill, it calls `skill("csv")` to get detailed instructions
-4. The agent uses `bash` to run scripts from `./skills/csv/`
 
 ## AI Agent Instructions
 
