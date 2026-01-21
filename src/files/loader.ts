@@ -1,7 +1,3 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import fg from "fast-glob";
-
 export interface LoadFilesOptions {
   files?: Record<string, string>;
   uploadDirectory?: {
@@ -13,6 +9,41 @@ export interface LoadFilesOptions {
 export interface FileEntry {
   path: string;
   content: Buffer;
+}
+
+type FastGlobFn = (
+  source: string | string[],
+  options?: import("fast-glob").Options,
+) => Promise<string[]>;
+
+// Lazy-loaded Node.js dependencies
+let cachedDeps: {
+  fs: typeof import("node:fs/promises");
+  path: typeof import("node:path");
+  fg: FastGlobFn;
+} | null = null;
+
+async function loadNodeDependencies() {
+  if (cachedDeps) {
+    return cachedDeps;
+  }
+
+  try {
+    const [fs, path, fgModule] = await Promise.all([
+      import("node:fs/promises"),
+      import("node:path"),
+      import("fast-glob"),
+    ]);
+    // fast-glob uses `export =` so dynamic import wraps it as { default: ... }
+    const fg = fgModule.default as FastGlobFn;
+    cachedDeps = { fs, path, fg };
+    return cachedDeps;
+  } catch {
+    throw new Error(
+      "uploadDirectory requires Node.js. " +
+        "In browser environments, use the 'files' option to provide file contents directly instead.",
+    );
+  }
 }
 
 /**
@@ -35,6 +66,7 @@ export async function* streamFiles(
 
   // Stream from directory (skip files already yielded from inline)
   if (options.uploadDirectory) {
+    const { fs, path, fg } = await loadNodeDependencies();
     const { source, include = "**/*" } = options.uploadDirectory;
     const absoluteSource = path.resolve(source);
 
@@ -66,6 +98,7 @@ export async function getFilePaths(
   const paths: string[] = [];
 
   if (options.uploadDirectory) {
+    const { path, fg } = await loadNodeDependencies();
     const { source, include = "**/*" } = options.uploadDirectory;
     const absoluteSource = path.resolve(source);
 

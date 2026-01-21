@@ -1,5 +1,5 @@
-import path from "node:path";
 import { getFilePaths, streamFiles } from "./files/loader.js";
+import { posixJoin } from "./posix-path.js";
 import {
   createJustBashSandbox,
   isJustBash,
@@ -99,7 +99,7 @@ export async function createBashTool(
         uploadDirectory: options.uploadDirectory,
       })) {
         batch.push({
-          path: path.posix.join(destination, file.path),
+          path: posixJoin(destination, file.path),
           content: file.content,
         });
 
@@ -120,9 +120,8 @@ export async function createBashTool(
 
     if (options.uploadDirectory && !options.files) {
       // Use OverlayFs for uploadDirectory (avoids loading all files into memory)
-      const overlayRoot = path.resolve(options.uploadDirectory.source);
       const result = await createJustBashSandbox({
-        overlayRoot,
+        overlayRoot: options.uploadDirectory.source,
       });
       sandbox = result;
 
@@ -152,7 +151,7 @@ export async function createBashTool(
         files: options.files,
         uploadDirectory: options.uploadDirectory,
       })) {
-        const absolutePath = path.posix.join(destination, file.path);
+        const absolutePath = posixJoin(destination, file.path);
         filesWithDestination[absolutePath] = file.content.toString("utf-8");
       }
 
