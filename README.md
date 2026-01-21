@@ -167,13 +167,79 @@ const customSandbox: Sandbox = {
     // Your implementation here
     return "";
   },
-  async writeFile(path, content) {
-    // Your implementation here
+  async writeFiles(files) {
+    // Your implementation here - files is Array<{path, content}>
   },
 };
 
 const { tools } = await createBashTool({ sandbox: customSandbox });
 ```
+
+## Skills (Experimental)
+
+Skills are modular capabilities that extend agent functionality. Each skill is a directory containing a `SKILL.md` file with instructions and optional scripts.
+
+```typescript
+import {
+  experimental_createSkillTool as createSkillTool,
+  createBashTool,
+} from "bash-tool";
+import { ToolLoopAgent } from "ai";
+
+// Discover skills and get files to upload
+const { loadSkill, files, instructions } = await createSkillTool({
+  skillsDirectory: "./skills",
+});
+
+// Create bash tool with skill files
+const { tools } = await createBashTool({
+  files,
+  extraInstructions: instructions,
+});
+
+// Use both tools with an agent
+const agent = new ToolLoopAgent({
+  model,
+  tools: { loadSkill, ...tools },
+});
+```
+
+### Skill Directory Structure
+
+```
+skills/
+├── csv/
+│   ├── SKILL.md      # Required: instructions with YAML frontmatter
+│   ├── analyze.sh    # Optional: scripts the agent can run
+│   └── filter.sh
+└── text/
+    ├── SKILL.md
+    └── search.sh
+```
+
+### SKILL.md Format
+
+```markdown
+---
+name: csv
+description: Analyze and transform CSV files
+---
+
+# CSV Processing
+
+Use `./skills/csv/analyze.sh <file>` to analyze a CSV file.
+```
+
+### How It Works
+
+1. `createSkillTool` discovers skills and returns:
+   - `loadSkill` - Tool for the agent to load a skill's instructions on demand
+   - `files` - All skill files to pass to `createBashTool`
+   - `instructions` - Extra instructions listing available skills
+
+2. The agent sees skill names in the `loadSkill` tool description
+3. When the agent needs a skill, it calls `loadSkill("csv")` to get detailed instructions
+4. The agent uses `bash` to run scripts from `./skills/csv/`
 
 ## AI Agent Instructions
 

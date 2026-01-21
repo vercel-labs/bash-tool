@@ -48,8 +48,8 @@ function createTempProject(codeBlocks: string[]): string {
       lib: ["ES2022"],
       typeRoots: [join(REPO_ROOT, "node_modules/@types")],
       paths: {
-        // Use .d.ts stubs to avoid pulling in full source
-        "bash-tool": [join(tempDir, "bash-tool.d.ts")],
+        // Use actual built types for bash-tool, stubs for external packages
+        "bash-tool": [join(REPO_ROOT, "dist/index.d.ts")],
         ai: [join(tempDir, "ai.d.ts")],
         "@vercel/sandbox": [join(tempDir, "vercel-sandbox.d.ts")],
         "just-bash": [join(tempDir, "just-bash.d.ts")],
@@ -61,59 +61,6 @@ function createTempProject(codeBlocks: string[]): string {
   writeFileSync(
     join(tempDir, "tsconfig.json"),
     JSON.stringify(tsconfig, null, 2),
-  );
-
-  // Create stub for bash-tool
-  writeFileSync(
-    join(tempDir, "bash-tool.d.ts"),
-    `
-export interface CommandResult {
-  stdout: string;
-  stderr: string;
-  exitCode: number;
-}
-
-export interface Sandbox {
-  executeCommand(command: string): Promise<CommandResult>;
-  readFile(path: string): Promise<string>;
-  writeFile(path: string, content: string): Promise<void>;
-}
-
-export interface BeforeBashCallInput {
-  command: string;
-}
-
-export interface BeforeBashCallOutput {
-  command: string;
-}
-
-export interface AfterBashCallInput {
-  command: string;
-  result: CommandResult;
-}
-
-export interface AfterBashCallOutput {
-  result: CommandResult;
-}
-
-export interface CreateBashToolOptions {
-  destination?: string;
-  files?: Record<string, string>;
-  uploadDirectory?: { source: string; include?: string };
-  sandbox?: any;
-  extraInstructions?: string;
-  onBeforeBashCall?: (input: BeforeBashCallInput) => BeforeBashCallOutput | void;
-  onAfterBashCall?: (input: AfterBashCallInput) => AfterBashCallOutput | void;
-}
-
-export interface BashToolkit {
-  bash: any;
-  tools: Record<string, any>;
-  sandbox: Sandbox;
-}
-
-export function createBashTool(options?: CreateBashToolOptions): Promise<BashToolkit>;
-`,
   );
 
   // Create stub for ai
@@ -156,6 +103,11 @@ export class Sandbox {
     `
 export class Bash {
   constructor(opts?: { cwd?: string });
+  exec(command: string): Promise<{ stdout: string; stderr: string; exitCode: number }>;
+  fs: {
+    readFile(path: string): Promise<string>;
+    writeFile(path: string, content: string): Promise<void>;
+  };
 }
 `,
   );
@@ -175,15 +127,19 @@ export class Bash {
     // Build assumed imports based on what the code block uses
     const assumedImports: string[] = [];
 
-    if (code.includes("createBashTool")) {
-      // Check if code imports Sandbox from bash-tool (for custom implementation)
-      if (code.includes('from "bash-tool"') && code.includes("Sandbox")) {
-        assumedImports.push(
-          'import { createBashTool, Sandbox } from "bash-tool";',
-        );
-      } else {
-        assumedImports.push('import { createBashTool } from "bash-tool";');
+    if (code.includes("createBashTool") || code.includes("createSkillTool")) {
+      // Build bash-tool import based on what's used
+      const imports: string[] = [];
+      if (code.includes("createBashTool")) {
+        imports.push("createBashTool");
       }
+      if (code.includes("createSkillTool")) {
+        imports.push("experimental_createSkillTool as createSkillTool");
+      }
+      if (code.includes('from "bash-tool"') && code.includes("Sandbox")) {
+        imports.push("Sandbox");
+      }
+      assumedImports.push(`import { ${imports.join(", ")} } from "bash-tool";`);
     }
     if (code.includes("ToolLoopAgent") || code.includes("stepCountIs")) {
       assumedImports.push('import { ToolLoopAgent, stepCountIs } from "ai";');
@@ -207,11 +163,11 @@ declare const yourModel: any;
 declare const model: any;
 `;
 
-    // Strip existing imports from the code
-    const codeWithoutImports = code
-      .split("\n")
-      .filter((line) => !line.trim().startsWith("import "))
-      .join("\n");
+    // Strip existing imports from the code (handles multi-line imports)
+    const codeWithoutImports = code.replace(
+      /^import\s+[\s\S]*?from\s+["'][^"']+["'];?\s*$/gm,
+      "",
+    );
 
     // Wrap code in async IIFE to allow top-level await and isolate scope
     const wrappedCode = `
