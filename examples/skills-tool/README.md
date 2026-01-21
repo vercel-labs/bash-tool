@@ -97,9 +97,51 @@ skills/
    ```
 3. Add bash scripts that the AI can execute
 
+## Instruction-Only Skills (No Bash Required)
+
+Skills don't need scripts - they can be pure instructions. For skills that only contain a `SKILL.md` with no executable scripts, you can use `createSkillTool` standalone without `createBashTool`:
+
+```typescript
+import { experimental_createSkillTool as createSkillTool } from "bash-tool";
+
+// Discover instruction-only skills
+const { skill, skills } = await createSkillTool({
+  skillsDirectory: "./knowledge",
+});
+
+// Use just the skill tool - no bash needed
+const agent = new ToolLoopAgent({
+  model: "anthropic/claude-haiku-4.5",
+  tools: { skill },
+});
+```
+
+Example instruction-only skill (`knowledge/json-guidelines/SKILL.md`):
+
+```yaml
+---
+name: json-format
+description: Guidelines for formatting JSON responses
+---
+
+# JSON Formatting Guidelines
+
+When outputting JSON:
+1. Use 2-space indentation
+2. Use camelCase for property names
+3. Wrap arrays in descriptive objects
+```
+
+This is useful for:
+- Style guides and formatting rules
+- Domain knowledge and terminology
+- Process documentation
+- Best practices the AI should follow
+
 ## Key Concepts
 
 - **Composable**: `createSkillTool` returns files, you control the sandbox via `createBashTool`
+- **Standalone mode**: Skills with only instructions work without `createBashTool`
 - **ToolLoopAgent**: AI SDK's agent that automatically loops through tool calls until done
 - **Progressive disclosure**: The AI only sees skill names initially, loading full instructions on demand
 - **Bash-only**: Scripts use standard Unix tools (awk, sed, grep, sort, etc.)

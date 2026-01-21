@@ -191,7 +191,8 @@ const { skill, files, instructions } = await createSkillTool({
   skillsDirectory: "./skills",
 });
 
-// Create bash tool with skill files
+// Providing a bash tool with skills is optional if your skill only has a SKILL.md file
+// and no further files and scripts.
 const { tools } = await createBashTool({
   files,
   extraInstructions: instructions,

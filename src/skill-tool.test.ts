@@ -126,6 +126,65 @@ These are the instructions.`,
     expect(instructions).toBe("");
   });
 
+  it("works standalone without createBashTool for instruction-only skills", async () => {
+    // Create a skill that only has instructions, no scripts
+    const skillDir = path.join(testDir, "knowledge-skill");
+    await fs.mkdir(skillDir);
+    await fs.writeFile(
+      path.join(skillDir, "SKILL.md"),
+      `---
+name: json-format
+description: Guidelines for formatting JSON responses
+---
+
+# JSON Formatting Guidelines
+
+When the user asks for JSON output:
+
+1. Use 2-space indentation
+2. Always include a root object
+3. Use camelCase for property names
+4. Wrap arrays in an object with a descriptive key
+
+## Example
+
+\`\`\`json
+{
+  "users": [
+    { "id": 1, "name": "Alice" }
+  ]
+}
+\`\`\``,
+    );
+
+    // Use skill tool standalone - no bash needed
+    const { skill, skills, files } = await createSkillTool({
+      skillsDirectory: testDir,
+    });
+
+    // Skill is discovered
+    expect(skills).toHaveLength(1);
+    expect(skills[0].name).toBe("json-format");
+
+    // Only SKILL.md in files (no scripts)
+    expect(Object.keys(files)).toHaveLength(1);
+    expect(files["./skills/knowledge-skill/SKILL.md"]).toContain(
+      "JSON Formatting",
+    );
+
+    // Can load the skill and get instructions
+    assert(skill.execute, "skill.execute should be defined");
+    const result = (await skill.execute(
+      { skillName: "json-format" },
+      opts,
+    )) as SkillResult;
+
+    expect(result.success).toBe(true);
+    expect(result.instructions).toContain("JSON Formatting Guidelines");
+    expect(result.instructions).toContain("camelCase");
+    expect(result.files).toHaveLength(0); // No script files
+  });
+
   it("integrates with createBashTool", async () => {
     const skillDir = path.join(testDir, "echo-skill");
     await fs.mkdir(skillDir);
