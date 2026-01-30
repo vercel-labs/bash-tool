@@ -1,3 +1,4 @@
+import nodePath from "node:path";
 import { tool } from "ai";
 import { z } from "zod";
 import type {
@@ -8,8 +9,128 @@ import type {
   Sandbox,
 } from "../types.js";
 
+/** Default path for invocation log files */
+export const DEFAULT_INVOCATION_LOG_PATH = ".bash-tool/commands";
+
+/**
+ * Structure of an invocation log file (parsed form)
+ */
+export interface InvocationLog {
+  timestamp: string;
+  command: string;
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+  outputFilter?: string;
+}
+
+/**
+ * Format an invocation log as a grep/tail-friendly text format.
+ * Format:
+ * ```
+ * # timestamp: 2024-01-15T10:30:45.123Z
+ * # command: ls -la
+ * # exitCode: 0
+ * # outputFilter: tail -10
+ * ---STDOUT---
+ * <stdout content>
+ * ---STDERR---
+ * <stderr content>
+ * ```
+ */
+function formatInvocationLog(log: InvocationLog): string {
+  const lines: string[] = [
+    `# timestamp: ${log.timestamp}`,
+    `# command: ${log.command}`,
+    `# exitCode: ${log.exitCode}`,
+  ];
+  if (log.outputFilter) {
+    lines.push(`# outputFilter: ${log.outputFilter}`);
+  }
+  lines.push("---STDOUT---");
+  lines.push(log.stdout);
+  lines.push("---STDERR---");
+  lines.push(log.stderr);
+  return lines.join("\n");
+}
+
+/**
+ * Parse an invocation log from text format.
+ * Throws if the format is invalid (missing required sections).
+ */
+export function parseInvocationLog(content: string): InvocationLog {
+  const lines = content.split("\n");
+  const log: InvocationLog = {
+    timestamp: "",
+    command: "",
+    exitCode: 0,
+    stdout: "",
+    stderr: "",
+  };
+
+  let section: "header" | "stdout" | "stderr" = "header";
+  const stdoutLines: string[] = [];
+  const stderrLines: string[] = [];
+  let hasStdoutSection = false;
+  let hasStderrSection = false;
+
+  for (const line of lines) {
+    if (line === "---STDOUT---") {
+      section = "stdout";
+      hasStdoutSection = true;
+      continue;
+    }
+    if (line === "---STDERR---") {
+      section = "stderr";
+      hasStderrSection = true;
+      continue;
+    }
+
+    if (section === "header" && line.startsWith("# ")) {
+      const match = line.match(/^# (\w+): (.*)$/);
+      if (match) {
+        const [, key, value] = match;
+        if (key === "timestamp") log.timestamp = value;
+        else if (key === "command") log.command = value;
+        else if (key === "exitCode") log.exitCode = Number.parseInt(value, 10);
+        else if (key === "outputFilter") log.outputFilter = value;
+      }
+    } else if (section === "stdout") {
+      stdoutLines.push(line);
+    } else if (section === "stderr") {
+      stderrLines.push(line);
+    }
+  }
+
+  // Validate that we found the required sections
+  if (!hasStdoutSection || !hasStderrSection) {
+    throw new Error("Invalid invocation log format: missing required sections");
+  }
+
+  log.stdout = stdoutLines.join("\n");
+  log.stderr = stderrLines.join("\n");
+
+  return log;
+}
+
+/**
+ * Generates a filesystem-safe timestamp for invocation log filenames.
+ * Replaces colons with dashes to avoid filesystem issues.
+ */
+function generateInvocationFilename(): string {
+  const timestamp = new Date().toISOString().replace(/:/g, "-");
+  return `${timestamp}.invocation`;
+}
+
 const bashSchema = z.object({
   command: z.string().describe("The bash command to execute"),
+  outputFilter: z
+    .string()
+    .optional()
+    .describe(
+      "Optional shell filter to apply to output (e.g., 'tail -20', 'grep error'). " +
+        "Full output is stored in invocation log, filtered output is returned.",
+    ),
 });
 
 /** Default maximum length for stdout/stderr output (30KB) */
@@ -38,6 +159,16 @@ export interface CreateBashToolOptions {
    * @default 30000
    */
   maxOutputLength?: number;
+  /**
+   * Enable storing full command output in invocation log files.
+   * @default false
+   */
+  enableInvocationLog?: boolean;
+  /**
+   * Path (relative to cwd) where invocation log files are stored.
+   * @default ".bash-tool/commands"
+   */
+  invocationLogPath?: string;
 }
 
 /**
@@ -108,12 +239,14 @@ export function createBashExecuteTool(options: CreateBashToolOptions) {
     onBeforeBashCall,
     onAfterBashCall,
     maxOutputLength = DEFAULT_MAX_OUTPUT_LENGTH,
+    enableInvocationLog = false,
+    invocationLogPath = DEFAULT_INVOCATION_LOG_PATH,
   } = options;
 
   return tool({
     description: generateDescription(options),
     inputSchema: bashSchema,
-    execute: async ({ command: originalCommand }) => {
+    execute: async ({ command: originalCommand, outputFilter }) => {
       // Allow modification of command before execution
       let command = originalCommand;
       if (onBeforeBashCall) {
@@ -127,7 +260,36 @@ export function createBashExecuteTool(options: CreateBashToolOptions) {
       const fullCommand = `cd "${cwd}" && ${command}`;
 
       // Execute the command
-      let result = await sandbox.executeCommand(fullCommand);
+      const rawResult = await sandbox.executeCommand(fullCommand);
+
+      // Store full output in invocation log if enabled
+      let logPath: string | undefined;
+      if (enableInvocationLog) {
+        const invocationLog: InvocationLog = {
+          timestamp: new Date().toISOString(),
+          command,
+          exitCode: rawResult.exitCode,
+          stdout: rawResult.stdout,
+          stderr: rawResult.stderr,
+          outputFilter,
+        };
+
+        const filename = generateInvocationFilename();
+        const logDir = nodePath.posix.join(cwd, invocationLogPath);
+        logPath = nodePath.posix.join(logDir, filename);
+
+        // Create directory and write invocation file
+        await sandbox.executeCommand(`mkdir -p "${logDir}"`);
+        await sandbox.writeFiles([
+          { path: logPath, content: formatInvocationLog(invocationLog) },
+        ]);
+      }
+
+      // Apply output filter if specified
+      let result = rawResult;
+      if (outputFilter) {
+        result = await applyOutputFilter(sandbox, cwd, rawResult, outputFilter);
+      }
 
       // Truncate output if needed
       result = {
@@ -144,7 +306,44 @@ export function createBashExecuteTool(options: CreateBashToolOptions) {
         }
       }
 
+      // Include invocation log path in response if logging is enabled
+      if (logPath) {
+        return { ...result, invocationLogPath: logPath };
+      }
+
       return result;
     },
   });
+}
+
+/**
+ * Apply a shell filter to command output.
+ */
+async function applyOutputFilter(
+  sandbox: Sandbox,
+  cwd: string,
+  result: { stdout: string; stderr: string; exitCode: number },
+  filter: string,
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  // Filter stdout through the shell filter command
+  // Use printf to handle special characters and avoid issues with echo
+  const escapedStdout = result.stdout
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "'\\''");
+  const filterCommand = `cd "${cwd}" && printf '%s' '${escapedStdout}' | ${filter}`;
+
+  const filterResult = await sandbox.executeCommand(filterCommand);
+
+  if (filterResult.exitCode !== 0) {
+    // If filter fails, return original with error appended
+    return {
+      ...result,
+      stderr: `${result.stderr}\n[Filter error: ${filterResult.stderr}]`.trim(),
+    };
+  }
+
+  return {
+    ...result,
+    stdout: filterResult.stdout,
+  };
 }

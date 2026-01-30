@@ -1,5 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
-import { createBashExecuteTool, DEFAULT_MAX_OUTPUT_LENGTH } from "./bash.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  createBashExecuteTool,
+  DEFAULT_INVOCATION_LOG_PATH,
+  DEFAULT_MAX_OUTPUT_LENGTH,
+  parseInvocationLog,
+} from "./bash.js";
 
 // Mock AI SDK
 vi.mock("ai", () => ({
@@ -10,14 +15,22 @@ vi.mock("ai", () => ({
   })),
 }));
 
-const mockSandbox = {
-  executeCommand: vi.fn(),
-  readFile: vi.fn(),
-  writeFiles: vi.fn(),
-  stop: vi.fn(),
-};
+function createMockSandbox() {
+  return {
+    executeCommand: vi.fn(),
+    readFile: vi.fn(),
+    writeFiles: vi.fn(),
+    stop: vi.fn(),
+  };
+}
+
+let mockSandbox = createMockSandbox();
 
 describe("createBashExecuteTool", () => {
+  beforeEach(() => {
+    mockSandbox = createMockSandbox();
+  });
+
   it("generates description with cwd only", () => {
     const tool = createBashExecuteTool({
       sandbox: mockSandbox,
@@ -387,5 +400,224 @@ Common operations:
     expect(result.stdout).toBe(
       `modified: ${"x".repeat(100)}\n\n[stdout truncated: 50 characters removed]`,
     );
+  });
+
+  describe("invocation logging", () => {
+    it("writes invocation log and returns path when enableInvocationLog is true", async () => {
+      mockSandbox.executeCommand.mockResolvedValue({
+        stdout: "hello world",
+        stderr: "",
+        exitCode: 0,
+      });
+
+      const tool = createBashExecuteTool({
+        sandbox: mockSandbox,
+        cwd: "/workspace",
+        enableInvocationLog: true,
+      });
+
+      // biome-ignore lint/style/noNonNullAssertion: test mock
+      const result = (await tool.execute!(
+        { command: "echo hello" },
+        {} as never,
+      )) as {
+        stdout: string;
+        invocationLogPath: string;
+      };
+
+      // Should create directory and write file
+      expect(mockSandbox.executeCommand).toHaveBeenCalledWith(
+        `mkdir -p "/workspace/${DEFAULT_INVOCATION_LOG_PATH}"`,
+      );
+      expect(mockSandbox.writeFiles).toHaveBeenCalled();
+
+      const writeCall = mockSandbox.writeFiles.mock.calls[0][0][0];
+      expect(writeCall.path).toMatch(
+        /\/workspace\/.bash-tool\/commands\/.*\.invocation$/,
+      );
+
+      const logContent = parseInvocationLog(writeCall.content);
+      expect(logContent.command).toBe("echo hello");
+      expect(logContent.stdout).toBe("hello world");
+      expect(logContent.exitCode).toBe(0);
+
+      // Response should include the log path
+      expect(result.invocationLogPath).toMatch(
+        /\/workspace\/.bash-tool\/commands\/.*\.invocation$/,
+      );
+      expect(result.invocationLogPath).toBe(writeCall.path);
+    });
+
+    it("does not write invocation log or return path when enableInvocationLog is false", async () => {
+      mockSandbox.executeCommand.mockResolvedValue({
+        stdout: "hello",
+        stderr: "",
+        exitCode: 0,
+      });
+
+      const tool = createBashExecuteTool({
+        sandbox: mockSandbox,
+        cwd: "/workspace",
+        enableInvocationLog: false,
+      });
+
+      // biome-ignore lint/style/noNonNullAssertion: test mock
+      const result = (await tool.execute!(
+        { command: "echo hello" },
+        {} as never,
+      )) as {
+        stdout: string;
+        invocationLogPath?: string;
+      };
+
+      expect(mockSandbox.writeFiles).not.toHaveBeenCalled();
+      expect(result.invocationLogPath).toBeUndefined();
+    });
+
+    it("uses custom invocationLogPath and returns it", async () => {
+      mockSandbox.executeCommand.mockResolvedValue({
+        stdout: "test",
+        stderr: "",
+        exitCode: 0,
+      });
+
+      const tool = createBashExecuteTool({
+        sandbox: mockSandbox,
+        cwd: "/workspace",
+        enableInvocationLog: true,
+        invocationLogPath: "custom/logs",
+      });
+
+      // biome-ignore lint/style/noNonNullAssertion: test mock
+      const result = (await tool.execute!(
+        { command: "test" },
+        {} as never,
+      )) as {
+        invocationLogPath: string;
+      };
+
+      expect(mockSandbox.executeCommand).toHaveBeenCalledWith(
+        'mkdir -p "/workspace/custom/logs"',
+      );
+
+      const writeCall = mockSandbox.writeFiles.mock.calls[0][0][0];
+      expect(writeCall.path).toMatch(
+        /\/workspace\/custom\/logs\/.*\.invocation$/,
+      );
+      expect(result.invocationLogPath).toBe(writeCall.path);
+    });
+
+    it("includes outputFilter in invocation log and returns path", async () => {
+      mockSandbox.executeCommand
+        .mockResolvedValueOnce({
+          stdout: "line1\nline2\nline3",
+          stderr: "",
+          exitCode: 0,
+        })
+        .mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 0 }) // mkdir
+        .mockResolvedValueOnce({ stdout: "line3", stderr: "", exitCode: 0 }); // filter
+
+      const tool = createBashExecuteTool({
+        sandbox: mockSandbox,
+        cwd: "/workspace",
+        enableInvocationLog: true,
+      });
+
+      // biome-ignore lint/style/noNonNullAssertion: test mock
+      const result = (await tool.execute!(
+        { command: "echo test", outputFilter: "tail -1" },
+        {} as never,
+      )) as {
+        stdout: string;
+        invocationLogPath: string;
+      };
+
+      const writeCall = mockSandbox.writeFiles.mock.calls[0][0][0];
+      const logContent = parseInvocationLog(writeCall.content);
+      expect(logContent.outputFilter).toBe("tail -1");
+      expect(result.invocationLogPath).toBe(writeCall.path);
+      // Filtered output should be returned
+      expect(result.stdout).toBe("line3");
+    });
+  });
+
+  describe("output filtering", () => {
+    it("applies outputFilter to stdout", async () => {
+      mockSandbox.executeCommand
+        .mockResolvedValueOnce({
+          stdout: "line1\nline2\nline3",
+          stderr: "",
+          exitCode: 0,
+        })
+        .mockResolvedValueOnce({
+          stdout: "line3",
+          stderr: "",
+          exitCode: 0,
+        });
+
+      const tool = createBashExecuteTool({
+        sandbox: mockSandbox,
+        cwd: "/workspace",
+      });
+
+      // biome-ignore lint/style/noNonNullAssertion: test mock
+      const result = (await tool.execute!(
+        { command: "cat file", outputFilter: "tail -1" },
+        {} as never,
+      )) as { stdout: string };
+
+      expect(result.stdout).toBe("line3");
+    });
+
+    it("returns original output with error when filter fails", async () => {
+      mockSandbox.executeCommand
+        .mockResolvedValueOnce({
+          stdout: "original output",
+          stderr: "",
+          exitCode: 0,
+        })
+        .mockResolvedValueOnce({
+          stdout: "",
+          stderr: "filter failed",
+          exitCode: 1,
+        });
+
+      const tool = createBashExecuteTool({
+        sandbox: mockSandbox,
+        cwd: "/workspace",
+      });
+
+      // biome-ignore lint/style/noNonNullAssertion: test mock
+      const result = (await tool.execute!(
+        { command: "echo test", outputFilter: "invalid-filter" },
+        {} as never,
+      )) as { stdout: string; stderr: string };
+
+      expect(result.stdout).toBe("original output");
+      expect(result.stderr).toContain("[Filter error: filter failed]");
+    });
+
+    it("does not apply filter when outputFilter is not provided", async () => {
+      mockSandbox.executeCommand.mockResolvedValue({
+        stdout: "original output",
+        stderr: "",
+        exitCode: 0,
+      });
+
+      const tool = createBashExecuteTool({
+        sandbox: mockSandbox,
+        cwd: "/workspace",
+      });
+
+      // biome-ignore lint/style/noNonNullAssertion: test mock
+      const result = (await tool.execute!(
+        { command: "echo test" },
+        {} as never,
+      )) as { stdout: string };
+
+      expect(result.stdout).toBe("original output");
+      // Should only have one executeCommand call (the actual command)
+      expect(mockSandbox.executeCommand).toHaveBeenCalledTimes(1);
+    });
   });
 });
