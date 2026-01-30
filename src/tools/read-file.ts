@@ -64,28 +64,51 @@ async function applyFilterWithCat(
 }
 
 /**
- * Apply a shell filter to in-memory content using printf.
+ * Extract stdout from invocation file and apply filter in a single command.
+ * Uses sed to extract content between ---STDOUT--- and ---STDERR--- markers.
  */
-async function applyFilterToContent(
+async function applyFilterToInvocationFile(
   sandbox: Sandbox,
   cwd: string,
-  content: string,
+  filePath: string,
   filter: string,
 ): Promise<{ content: string; error?: string }> {
-  // Use printf to handle special characters and avoid issues with echo
-  const escapedContent = content.replace(/\\/g, "\\\\").replace(/'/g, "'\\''");
-  const filterCommand = `cd "${cwd}" && printf '%s' '${escapedContent}' | ${filter}`;
+  // Extract stdout section and pipe through filter
+  // sed extracts lines between ---STDOUT--- and ---STDERR--- (exclusive)
+  const filterCommand = `cd "${cwd}" && sed -n '/^---STDOUT---$/,/^---STDERR---$/{ /^---STDOUT---$/d; /^---STDERR---$/d; p }' "${filePath}" | ${filter}`;
 
   const result = await sandbox.executeCommand(filterCommand);
 
   if (result.exitCode !== 0) {
     return {
-      content,
+      content: "",
       error: `Filter error: ${result.stderr}`,
     };
   }
 
   return { content: result.stdout };
+}
+
+/**
+ * Extract stdout from invocation file using sed.
+ */
+async function extractInvocationStdout(
+  sandbox: Sandbox,
+  cwd: string,
+  filePath: string,
+): Promise<string> {
+  // Extract stdout section using sed
+  const command = `cd "${cwd}" && sed -n '/^---STDOUT---$/,/^---STDERR---$/{ /^---STDOUT---$/d; /^---STDERR---$/d; p }' "${filePath}"`;
+
+  const result = await sandbox.executeCommand(command);
+
+  if (result.exitCode !== 0) {
+    // Fall back to reading and parsing
+    const content = await sandbox.readFile(filePath);
+    return parseInvocationContent(content);
+  }
+
+  return result.stdout;
 }
 
 function generateDescription(): string {
@@ -117,25 +140,34 @@ export function createReadFileTool(options: CreateReadFileToolOptions) {
     execute: async ({ path, outputFilter }) => {
       const resolvedPath = nodePath.posix.resolve(cwd, path);
 
-      // For invocation files, we need to read and parse to extract stdout
+      // For invocation files, extract stdout section
       if (isInvocationFile(path)) {
-        let content = await sandbox.readFile(resolvedPath);
-        content = parseInvocationContent(content);
-
-        // Apply filter to the extracted stdout content
         if (outputFilter) {
-          const filterResult = await applyFilterToContent(
+          // Use sed to extract stdout and pipe through filter in one command
+          const filterResult = await applyFilterToInvocationFile(
             sandbox,
             cwd,
-            content,
+            resolvedPath,
             outputFilter,
           );
           if (filterResult.error) {
-            return { content: filterResult.content, error: filterResult.error };
+            // Fall back to reading file and parsing
+            const content = await extractInvocationStdout(
+              sandbox,
+              cwd,
+              resolvedPath,
+            );
+            return { content, error: filterResult.error };
           }
-          content = filterResult.content;
+          return { content: filterResult.content };
         }
 
+        // No filter, just extract stdout
+        const content = await extractInvocationStdout(
+          sandbox,
+          cwd,
+          resolvedPath,
+        );
         return { content };
       }
 

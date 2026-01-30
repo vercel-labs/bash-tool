@@ -86,15 +86,13 @@ describe("createReadFileTool", () => {
   });
 
   describe("invocation file handling", () => {
-    it("extracts stdout from .invocation files", async () => {
-      const invocationLog = formatInvocationLog({
-        timestamp: "2024-01-15T10:30:45.123Z",
-        command: "ls -la",
-        exitCode: 0,
+    it("extracts stdout from .invocation files using sed", async () => {
+      // Now uses sed to extract stdout, mock executeCommand
+      mockSandbox.executeCommand.mockResolvedValue({
         stdout: "file1.txt\nfile2.txt",
         stderr: "",
+        exitCode: 0,
       });
-      mockSandbox.readFile.mockResolvedValue(invocationLog);
 
       const tool = createReadFileTool({
         sandbox: mockSandbox,
@@ -108,10 +106,28 @@ describe("createReadFileTool", () => {
       )) as { content: string };
 
       expect(result.content).toBe("file1.txt\nfile2.txt");
+      // Verify sed command was used to extract stdout section
+      expect(mockSandbox.executeCommand).toHaveBeenCalledWith(
+        expect.stringContaining("sed -n"),
+      );
     });
 
-    it("returns original content if invocation file parsing fails", async () => {
-      mockSandbox.readFile.mockResolvedValue("not valid format");
+    it("falls back to readFile if sed fails", async () => {
+      // Sed fails
+      mockSandbox.executeCommand.mockResolvedValue({
+        stdout: "",
+        stderr: "error",
+        exitCode: 1,
+      });
+      // Fallback readFile returns the raw content
+      const invocationLog = formatInvocationLog({
+        timestamp: "2024-01-15T10:30:45.123Z",
+        command: "ls -la",
+        exitCode: 0,
+        stdout: "fallback content",
+        stderr: "",
+      });
+      mockSandbox.readFile.mockResolvedValue(invocationLog);
 
       const tool = createReadFileTool({
         sandbox: mockSandbox,
@@ -124,7 +140,7 @@ describe("createReadFileTool", () => {
         {} as never,
       )) as { content: string };
 
-      expect(result.content).toBe("not valid format");
+      expect(result.content).toBe("fallback content");
     });
   });
 
@@ -174,15 +190,8 @@ describe("createReadFileTool", () => {
       expect(result.error).toContain("Filter error");
     });
 
-    it("applies filter to invocation file stdout", async () => {
-      const invocationLog = formatInvocationLog({
-        timestamp: "2024-01-15T10:30:45.123Z",
-        command: "ls -la",
-        exitCode: 0,
-        stdout: "line1\nline2\nline3",
-        stderr: "",
-      });
-      mockSandbox.readFile.mockResolvedValue(invocationLog);
+    it("applies filter to invocation file stdout using sed and pipe", async () => {
+      // Now uses sed to extract stdout and pipe through filter in one command
       mockSandbox.executeCommand.mockResolvedValue({
         stdout: "line3",
         stderr: "",
@@ -201,6 +210,13 @@ describe("createReadFileTool", () => {
       )) as { content: string };
 
       expect(result.content).toBe("line3");
+      // Verify sed + filter command was used
+      expect(mockSandbox.executeCommand).toHaveBeenCalledWith(
+        expect.stringContaining("sed -n"),
+      );
+      expect(mockSandbox.executeCommand).toHaveBeenCalledWith(
+        expect.stringContaining("| tail -1"),
+      );
     });
   });
 });

@@ -529,14 +529,12 @@ ${OUTPUT_FILTERING_SECTION}`);
     });
 
     it("includes outputFilter in invocation log and returns path", async () => {
-      mockSandbox.executeCommand
-        .mockResolvedValueOnce({
-          stdout: "line1\nline2\nline3",
-          stderr: "",
-          exitCode: 0,
-        })
-        .mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 0 }) // mkdir
-        .mockResolvedValueOnce({ stdout: "line3", stderr: "", exitCode: 0 }); // filter
+      // With outputFilter, a single combined bash script is executed
+      mockSandbox.executeCommand.mockResolvedValueOnce({
+        stdout: "line3", // filtered output
+        stderr: "",
+        exitCode: 0,
+      });
 
       const tool = createBashExecuteTool({
         sandbox: mockSandbox,
@@ -553,28 +551,28 @@ ${OUTPUT_FILTERING_SECTION}`);
         invocationLogPath: string;
       };
 
-      const writeCall = mockSandbox.writeFiles.mock.calls[0][0][0];
-      const logContent = parseInvocationLog(writeCall.content);
-      expect(logContent.outputFilter).toBe("tail -1");
-      expect(result.invocationLogPath).toBe(writeCall.path);
+      // With outputFilter, invocation log is written via bash script (not writeFiles)
+      expect(mockSandbox.writeFiles).not.toHaveBeenCalled();
+      // The log path should still be returned
+      expect(result.invocationLogPath).toMatch(
+        /\/workspace\/.bash-tool\/commands\/.*\.invocation$/,
+      );
       // Filtered output should be returned
       expect(result.stdout).toBe("line3");
+      // Single executeCommand call for the combined script
+      expect(mockSandbox.executeCommand).toHaveBeenCalledTimes(1);
     });
   });
 
   describe("output filtering", () => {
     it("applies outputFilter to stdout", async () => {
-      mockSandbox.executeCommand
-        .mockResolvedValueOnce({
-          stdout: "line1\nline2\nline3",
-          stderr: "",
-          exitCode: 0,
-        })
-        .mockResolvedValueOnce({
-          stdout: "line3",
-          stderr: "",
-          exitCode: 0,
-        });
+      // With outputFilter, a single combined bash script is executed
+      // that returns filtered output directly
+      mockSandbox.executeCommand.mockResolvedValueOnce({
+        stdout: "line3", // filtered output from the combined script
+        stderr: "",
+        exitCode: 0,
+      });
 
       const tool = createBashExecuteTool({
         sandbox: mockSandbox,
@@ -588,20 +586,17 @@ ${OUTPUT_FILTERING_SECTION}`);
       )) as { stdout: string };
 
       expect(result.stdout).toBe("line3");
+      // Single executeCommand call for the combined script
+      expect(mockSandbox.executeCommand).toHaveBeenCalledTimes(1);
     });
 
-    it("returns original output with error when filter fails", async () => {
-      mockSandbox.executeCommand
-        .mockResolvedValueOnce({
-          stdout: "original output",
-          stderr: "",
-          exitCode: 0,
-        })
-        .mockResolvedValueOnce({
-          stdout: "",
-          stderr: "filter failed",
-          exitCode: 1,
-        });
+    it("returns filter exit code when filter fails", async () => {
+      // When filter fails, the combined script exits with filter's exit code
+      mockSandbox.executeCommand.mockResolvedValueOnce({
+        stdout: "",
+        stderr: "filter failed",
+        exitCode: 1,
+      });
 
       const tool = createBashExecuteTool({
         sandbox: mockSandbox,
@@ -612,10 +607,10 @@ ${OUTPUT_FILTERING_SECTION}`);
       const result = (await tool.execute!(
         { command: "echo test", outputFilter: "invalid-filter" },
         {} as never,
-      )) as { stdout: string; stderr: string };
+      )) as { stdout: string; stderr: string; exitCode: number };
 
-      expect(result.stdout).toBe("original output");
-      expect(result.stderr).toContain("[Filter error: filter failed]");
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toBe("filter failed");
     });
 
     it("does not apply filter when outputFilter is not provided", async () => {

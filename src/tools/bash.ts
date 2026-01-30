@@ -293,39 +293,54 @@ export function createBashExecuteTool(options: CreateBashToolOptions) {
         }
       }
 
-      // Prepend cd to ensure commands run in the working directory
-      const fullCommand = `cd "${cwd}" && ${command}`;
-
-      // Execute the command
-      const rawResult = await sandbox.executeCommand(fullCommand);
-
-      // Store full output in invocation log if enabled
+      let result: { stdout: string; stderr: string; exitCode: number };
       let logPath: string | undefined;
-      if (enableInvocationLog) {
-        const invocationLog: InvocationLog = {
-          timestamp: new Date().toISOString(),
-          command,
-          exitCode: rawResult.exitCode,
-          stdout: rawResult.stdout,
-          stderr: rawResult.stderr,
-          outputFilter,
-        };
 
-        const filename = generateInvocationFilename();
-        const logDir = nodePath.posix.join(cwd, invocationLogPath);
-        logPath = nodePath.posix.join(logDir, filename);
-
-        // Create directory and write invocation file
-        await sandbox.executeCommand(`mkdir -p "${logDir}"`);
-        await sandbox.writeFiles([
-          { path: logPath, content: formatInvocationLog(invocationLog) },
-        ]);
-      }
-
-      // Apply output filter if specified
-      let result = rawResult;
+      // Optimized path: when filter is specified, use temp files to avoid
+      // transferring full output to Node.js and back
       if (outputFilter) {
-        result = await applyOutputFilter(sandbox, cwd, rawResult, outputFilter);
+        const execResult = await executeWithFilter(
+          sandbox,
+          cwd,
+          command,
+          outputFilter,
+          enableInvocationLog
+            ? {
+                logDir: nodePath.posix.join(cwd, invocationLogPath),
+                logPath: nodePath.posix.join(
+                  cwd,
+                  invocationLogPath,
+                  generateInvocationFilename(),
+                ),
+              }
+            : undefined,
+        );
+        result = execResult.result;
+        logPath = execResult.logPath;
+      } else {
+        // No filter: execute command directly
+        const fullCommand = `cd "${cwd}" && ${command}`;
+        result = await sandbox.executeCommand(fullCommand);
+
+        // Store full output in invocation log if enabled
+        if (enableInvocationLog) {
+          const invocationLog: InvocationLog = {
+            timestamp: new Date().toISOString(),
+            command,
+            exitCode: result.exitCode,
+            stdout: result.stdout,
+            stderr: result.stderr,
+          };
+
+          const filename = generateInvocationFilename();
+          const logDir = nodePath.posix.join(cwd, invocationLogPath);
+          logPath = nodePath.posix.join(logDir, filename);
+
+          await sandbox.executeCommand(`mkdir -p "${logDir}"`);
+          await sandbox.writeFiles([
+            { path: logPath, content: formatInvocationLog(invocationLog) },
+          ]);
+        }
       }
 
       // Truncate output if needed
@@ -354,33 +369,82 @@ export function createBashExecuteTool(options: CreateBashToolOptions) {
 }
 
 /**
- * Apply a shell filter to command output.
+ * Execute a command with output filter using temp files.
+ * This keeps full output in the sandbox and only returns filtered output.
+ * Optionally writes invocation log in the same bash invocation.
  */
-async function applyOutputFilter(
+async function executeWithFilter(
   sandbox: Sandbox,
   cwd: string,
-  result: { stdout: string; stderr: string; exitCode: number },
+  command: string,
   filter: string,
-): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  // Filter stdout through the shell filter command
-  // Use printf to handle special characters and avoid issues with echo
-  const escapedStdout = result.stdout
-    .replace(/\\/g, "\\\\")
-    .replace(/'/g, "'\\''");
-  const filterCommand = `cd "${cwd}" && printf '%s' '${escapedStdout}' | ${filter}`;
+  invocationLog?: { logDir: string; logPath: string },
+): Promise<{
+  result: { stdout: string; stderr: string; exitCode: number };
+  logPath?: string;
+}> {
+  const timestamp = new Date().toISOString();
+  const escapedCommand = command.replace(/'/g, "'\\''");
+  const escapedFilter = filter.replace(/'/g, "'\\''");
 
-  const filterResult = await sandbox.executeCommand(filterCommand);
+  // Use fixed temp file paths based on timestamp to avoid mktemp issues
+  const tempId = timestamp.replace(/[:.]/g, "-");
+  const tmpStdout = `/tmp/bash-tool-stdout-${tempId}`;
+  const tmpStderr = `/tmp/bash-tool-stderr-${tempId}`;
 
-  if (filterResult.exitCode !== 0) {
-    // If filter fails, return original with error appended
-    return {
-      ...result,
-      stderr: `${result.stderr}\n[Filter error: ${filterResult.stderr}]`.trim(),
-    };
+  // Build a single bash script that:
+  // 1. Runs the command, capturing output to temp files
+  // 2. Optionally writes the invocation log
+  // 3. Filters and outputs the result
+  // 4. Cleans up temp files
+  // 5. Exits with the original command's exit code
+
+  let script = `
+# Run command and capture output
+cd "${cwd}" && ${command} > "${tmpStdout}" 2> "${tmpStderr}"
+cmd_exit=$?
+`;
+
+  if (invocationLog) {
+    // Add invocation log writing to the script
+    script += `
+# Write invocation log
+mkdir -p "${invocationLog.logDir}"
+cat > "${invocationLog.logPath}" << 'INVOCATION_HEADER'
+# timestamp: ${timestamp}
+# command: ${escapedCommand}
+INVOCATION_HEADER
+echo "# exitCode: $cmd_exit" >> "${invocationLog.logPath}"
+echo "# outputFilter: ${escapedFilter}" >> "${invocationLog.logPath}"
+echo "---STDOUT---" >> "${invocationLog.logPath}"
+cat "${tmpStdout}" >> "${invocationLog.logPath}"
+echo "---STDERR---" >> "${invocationLog.logPath}"
+cat "${tmpStderr}" >> "${invocationLog.logPath}"
+`;
   }
 
+  script += `
+# Output filtered stdout
+cat "${tmpStdout}" | ${filter}
+filter_exit=$?
+
+# Output original stderr to stderr
+cat "${tmpStderr}" >&2
+
+# Clean up
+rm -f "${tmpStdout}" "${tmpStderr}"
+
+# Exit with filter exit code if filter failed, otherwise original exit code
+if [ $filter_exit -ne 0 ]; then
+  exit $filter_exit
+fi
+exit $cmd_exit
+`;
+
+  const result = await sandbox.executeCommand(script);
+
   return {
-    ...result,
-    stdout: filterResult.stdout,
+    result,
+    logPath: invocationLog?.logPath,
   };
 }
