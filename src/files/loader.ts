@@ -63,6 +63,7 @@ export async function* streamFiles(
 export async function getFilePaths(
   options: LoadFilesOptions,
 ): Promise<string[]> {
+  "use step";
   const paths: string[] = [];
 
   if (options.uploadDirectory) {

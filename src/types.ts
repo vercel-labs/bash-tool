@@ -5,6 +5,7 @@ export interface CommandResult {
   stdout: string;
   stderr: string;
   exitCode: number;
+  sandbox: Sandbox;
 }
 
 export interface Sandbox {

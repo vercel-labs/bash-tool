@@ -22,6 +22,7 @@ export function createWriteFileTool(options: CreateWriteFileToolOptions) {
       "Write content to a file in the sandbox. Creates parent directories if needed.",
     inputSchema: writeFileSchema,
     execute: async ({ path, content }) => {
+      "use step";
       const resolvedPath = nodePath.posix.resolve(cwd, path);
       await sandbox.writeFiles([{ path: resolvedPath, content }]);
       return { success: true };
