@@ -3,6 +3,7 @@ import { getFilePaths, streamFiles } from "./files/loader.js";
 import {
   createJustBashSandbox,
   isJustBash,
+  JustBashLike,
   wrapJustBash,
 } from "./sandbox/just-bash.js";
 import { isVercelSandbox, wrapVercelSandbox } from "./sandbox/vercel.js";
@@ -10,7 +11,13 @@ import { createBashExecuteTool } from "./tools/bash.js";
 import { createReadFileTool } from "./tools/read-file.js";
 import { createWriteFileTool } from "./tools/write-file.js";
 import { createToolPrompt } from "./tools-prompt.js";
-import type { BashToolkit, CreateBashToolOptions, Sandbox } from "./types.js";
+import type {
+  BashToolkit,
+  CommandResult,
+  CreateBashToolOptions,
+  Sandbox,
+} from "./types.js";
+import { ToolExecuteFunction } from "ai";
 
 const DEFAULT_DESTINATION = "/workspace";
 const VERCEL_SANDBOX_DESTINATION = "/vercel/sandbox/workspace";
@@ -44,8 +51,28 @@ const DEFAULT_MAX_FILES = 1000;
  * ```
  */
 export async function createBashTool(
-  options: CreateBashToolOptions = {},
+  options: CreateBashToolOptions = {}
 ): Promise<BashToolkit> {
+  const tools = await createBashToolStep(options);
+  const bashStep = tools.bash.execute!;
+  tools.bash.execute = async (input, toolOptions) => {
+    const result = (await bashStep(input, toolOptions)) as CommandResult;
+    // For just-bash we need to copy the FS from the returned sandbox
+    if (isJustBash(result.sandbox) && isJustBash(options.sandbox)) {
+      const sandbox = options.sandbox as JustBashLike;
+      sandbox.fs = result.sandbox.fs;
+      sandbox.limits = result.sandbox.limits;
+      sandbox.state = result.sandbox.state;
+    }
+    return result;
+  };
+  return tools;
+}
+
+export async function createBashToolStep(
+  options: CreateBashToolOptions = {}
+): Promise<BashToolkit> {
+  "use step";
   // Determine default destination based on sandbox type
   const defaultDestination =
     options.sandbox && isVercelSandbox(options.sandbox)
@@ -86,7 +113,7 @@ export async function createBashTool(
       throw new Error(
         `Too many files to upload: ${fileList.length} files exceeds the limit of ${maxFiles}. ` +
           `Either increase maxFiles, use a more restrictive include pattern in uploadDirectory, ` +
-          `or write files to the sandbox yourself before calling createBashTool.`,
+          `or write files to the sandbox yourself before calling createBashTool.`
       );
     }
 
@@ -135,7 +162,7 @@ export async function createBashTool(
       if (maxFiles > 0 && fileList.length > maxFiles) {
         throw new Error(
           `Too many files: ${fileList.length} files exceeds the limit of ${maxFiles}. ` +
-            `Either increase maxFiles or use a more restrictive include pattern in uploadDirectory.`,
+            `Either increase maxFiles or use a more restrictive include pattern in uploadDirectory.`
         );
       }
 
@@ -166,7 +193,7 @@ export async function createBashTool(
         throw new Error(
           `Too many files to load: ${fileList.length} files exceeds the limit of ${maxFiles}. ` +
             `Either increase maxFiles, use a more restrictive include pattern in uploadDirectory, ` +
-            `or provide your own sandbox with files already written.`,
+            `or provide your own sandbox with files already written.`
         );
       }
 
