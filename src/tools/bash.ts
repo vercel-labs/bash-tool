@@ -187,7 +187,14 @@ function truncateOutput(
 }
 
 function generateDescription(options: CreateBashToolOptions): string {
-  const { cwd, files, extraInstructions, toolPrompt } = options;
+  const {
+    cwd,
+    files,
+    extraInstructions,
+    toolPrompt,
+    enableInvocationLog = false,
+    invocationLogPath = DEFAULT_INVOCATION_LOG_PATH,
+  } = options;
 
   const lines: string[] = [
     "Execute bash commands in the sandbox environment.",
@@ -223,6 +230,36 @@ function generateDescription(options: CreateBashToolOptions): string {
   lines.push("  grep -r 'pattern' . # Search file contents");
   lines.push("  cat <file>          # View file contents");
   lines.push("");
+
+  // Add output filtering documentation
+  lines.push("OUTPUT FILTERING:");
+  lines.push(
+    "Use the outputFilter parameter to filter stdout before it is returned.",
+  );
+  if (enableInvocationLog) {
+    lines.push(
+      "Full unfiltered output is saved to the invocation log for later retrieval.",
+    );
+  }
+  lines.push("Examples:");
+  lines.push('  outputFilter: "tail -50"      # Last 50 lines');
+  lines.push('  outputFilter: "head -100"     # First 100 lines');
+  lines.push('  outputFilter: "grep error"    # Lines containing "error"');
+  lines.push('  outputFilter: "grep -i warn"  # Case-insensitive search');
+  lines.push("");
+
+  // Add invocation log documentation if enabled
+  if (enableInvocationLog) {
+    lines.push("INVOCATION LOG:");
+    lines.push(`Log path: ${invocationLogPath}/<timestamp>.invocation`);
+    lines.push(
+      "The response includes invocationLogPath with the log file path.",
+    );
+    lines.push(
+      "Use readFile with outputFilter to re-query logs with different filters.",
+    );
+    lines.push("");
+  }
 
   if (extraInstructions) {
     lines.push(extraInstructions);

@@ -88,13 +88,31 @@ async function applyFilterToContent(
   return { content: result.stdout };
 }
 
+function generateDescription(): string {
+  const lines = [
+    "Read the contents of a file from the sandbox.",
+    "",
+    "OUTPUT FILTERING:",
+    "Use the outputFilter parameter to filter content before it is returned.",
+    "Examples:",
+    '  outputFilter: "tail -50"      # Last 50 lines',
+    '  outputFilter: "head -100"     # First 100 lines',
+    '  outputFilter: "grep error"    # Lines containing "error"',
+    '  outputFilter: "grep -i warn"  # Case-insensitive search',
+    "",
+    "INVOCATION FILES:",
+    "For .invocation files (from bash tool logs), automatically extracts stdout.",
+    "Use outputFilter to re-query stored command output with different filters.",
+    'Example: readFile({ path: "...invocation", outputFilter: "grep -i error" })',
+  ];
+  return lines.join("\n");
+}
+
 export function createReadFileTool(options: CreateReadFileToolOptions) {
   const { sandbox, cwd } = options;
 
   return tool({
-    description:
-      "Read the contents of a file from the sandbox. " +
-      "For .invocation files, extracts the stdout from the stored command output.",
+    description: generateDescription(),
     inputSchema: readFileSchema,
     execute: async ({ path, outputFilter }) => {
       const resolvedPath = nodePath.posix.resolve(cwd, path);

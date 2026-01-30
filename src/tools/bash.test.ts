@@ -26,6 +26,15 @@ function createMockSandbox() {
 
 let mockSandbox = createMockSandbox();
 
+// Common description sections for tests
+const OUTPUT_FILTERING_SECTION = `OUTPUT FILTERING:
+Use the outputFilter parameter to filter stdout before it is returned.
+Examples:
+  outputFilter: "tail -50"      # Last 50 lines
+  outputFilter: "head -100"     # First 100 lines
+  outputFilter: "grep error"    # Lines containing "error"
+  outputFilter: "grep -i warn"  # Case-insensitive search`;
+
 describe("createBashExecuteTool", () => {
   beforeEach(() => {
     mockSandbox = createMockSandbox();
@@ -48,7 +57,9 @@ Common operations:
   ls -la              # List files with details
   find . -name '*.ts' # Find files by pattern
   grep -r 'pattern' . # Search file contents
-  cat <file>          # View file contents`);
+  cat <file>          # View file contents
+
+${OUTPUT_FILTERING_SECTION}`);
   });
 
   it("generates description with files list", () => {
@@ -74,7 +85,9 @@ Common operations:
   ls -la              # List files with details
   find . -name '*.ts' # Find files by pattern
   grep -r 'pattern' . # Search file contents
-  cat <file>          # View file contents`);
+  cat <file>          # View file contents
+
+${OUTPUT_FILTERING_SECTION}`);
   });
 
   it("generates description with truncated files list when more than 8", () => {
@@ -118,7 +131,9 @@ Common operations:
   ls -la              # List files with details
   find . -name '*.ts' # Find files by pattern
   grep -r 'pattern' . # Search file contents
-  cat <file>          # View file contents`);
+  cat <file>          # View file contents
+
+${OUTPUT_FILTERING_SECTION}`);
   });
 
   it("generates description with extra instructions", () => {
@@ -140,6 +155,8 @@ Common operations:
   find . -name '*.ts' # Find files by pattern
   grep -r 'pattern' . # Search file contents
   cat <file>          # View file contents
+
+${OUTPUT_FILTERING_SECTION}
 
 Focus on TypeScript files only.`);
   });
@@ -169,6 +186,8 @@ Common operations:
   grep -r 'pattern' . # Search file contents
   cat <file>          # View file contents
 
+${OUTPUT_FILTERING_SECTION}
+
 This is a Python project.`);
   });
 
@@ -190,7 +209,9 @@ Common operations:
   ls -la              # List files with details
   find . -name '*.ts' # Find files by pattern
   grep -r 'pattern' . # Search file contents
-  cat <file>          # View file contents`);
+  cat <file>          # View file contents
+
+${OUTPUT_FILTERING_SECTION}`);
   });
 
   it("truncates stdout when exceeding maxOutputLength", async () => {
