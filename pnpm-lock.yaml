@@ -31,8 +31,8 @@ importers:
         specifier: ^6.0.13
         version: 6.0.43(zod@3.25.76)
       just-bash:
-        specifier: ^2.5.1
-        version: 2.5.2
+        specifier: ^2.7.0
+        version: 2.7.0
       knip:
         specifier: ^5.80.0
         version: 5.82.1(@types/node@22.19.7)(typescript@5.9.3)
@@ -822,8 +822,8 @@ packages:
   jsonlines@0.1.1:
     resolution: {integrity: sha512-ekDrAGso79Cvf+dtm+mL8OBI2bmAOt3gssYs833De/C9NmIpWDWyUO4zPgB5x2/OhY366dkhgfPMYfwZF7yOZA==}
 
-  just-bash@2.5.2:
-    resolution: {integrity: sha512-Huv+JXBvl3F0pJ5mLnUUlNUmfwlvjQpbvwpCHsB4mDAyWEpmnTG9nNlwMJ/t7a17tkZ9l8CPihRmuNhEFMqDWQ==}
+  just-bash@2.7.0:
+    resolution: {integrity: sha512-DM9rHO5L62ALIHuWVhmhwUVqAXHVmtO4UPlFFcgVYEQTtv1Qhis43/t1aBY0Mj59vibIfNKumqy5tGraXRHsbA==}
     hasBin: true
 
   kind-of@6.0.3:
@@ -939,6 +939,10 @@ packages:
 
   pump@3.0.3:
     resolution: {integrity: sha512-todwxLMY7/heScKmntwQG8CXVkWUOdYxIvY2s0VWAAMh/nd8SoYiRaKjlr7+iCs984f2P8zvrfWcDDYVb73NfA==}
+
+  pyodide@0.27.7:
+    resolution: {integrity: sha512-RUSVJlhQdfWfgO9hVHCiXoG+nVZQRS5D9FzgpLJ/VcgGBLSAKoPL8kTiOikxbHQm1kRISeWUBdulEgO26qpSRA==}
+    engines: {node: '>=18.0.0'}
 
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
@@ -1175,6 +1179,18 @@ packages:
 
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
+
+  ws@8.19.0:
+    resolution: {integrity: sha512-blAT2mjOEIi0ZzruJfIhb3nps74PRWTCz1IjglWEEpQl5XS/UNama6u2/rjFkDDouqr4L67ry+1aGIALViWjDg==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
 
   xdg-app-paths@5.1.0:
     resolution: {integrity: sha512-RAQ3WkPf4KTU1A8RtFx3gWywzVKe00tfOPFfl2NDGqbIFENQO4kqAJp7mhQjNj/33W5x5hiWWUdyfPq/5SU3QA==}
@@ -1820,7 +1836,7 @@ snapshots:
 
   jsonlines@0.1.1: {}
 
-  just-bash@2.5.2:
+  just-bash@2.7.0:
     dependencies:
       '@mongodb-js/zstd': 7.0.0
       compressjs: 1.0.3
@@ -1831,6 +1847,7 @@ snapshots:
       minimatch: 10.1.1
       modern-tar: 0.7.3
       papaparse: 5.5.3
+      pyodide: 0.27.7
       smol-toml: 1.6.0
       sprintf-js: 1.1.3
       sql.js: 1.13.0
@@ -1839,7 +1856,9 @@ snapshots:
     optionalDependencies:
       node-liblzma: 2.0.3
     transitivePeerDependencies:
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   kind-of@6.0.3: {}
 
@@ -1972,6 +1991,13 @@ snapshots:
     dependencies:
       end-of-stream: 1.4.5
       once: 1.4.0
+
+  pyodide@0.27.7:
+    dependencies:
+      ws: 8.19.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   queue-microtask@1.2.3: {}
 
@@ -2226,6 +2252,8 @@ snapshots:
       stackback: 0.0.2
 
   wrappy@1.0.2: {}
+
+  ws@8.19.0: {}
 
   xdg-app-paths@5.1.0:
     dependencies:
