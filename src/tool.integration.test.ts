@@ -211,6 +211,156 @@ describe("createBashTool integration", () => {
 
       expect(result.content).toBe('export const hello = "world";');
     });
+
+    it("applies outputFilter to file content", async () => {
+      const { tools } = await createBashTool({
+        files: {
+          "multiline.txt": "line1\nline2\nline3\nline4\nline5",
+        },
+      });
+
+      assert(tools.readFile.execute, "readFile.execute should be defined");
+      const result = (await tools.readFile.execute(
+        { path: "multiline.txt", outputFilter: "tail -2" },
+        opts,
+      )) as { content: string };
+
+      expect(result.content.trim()).toBe("line4\nline5");
+    });
+
+    it("applies grep filter to file content", async () => {
+      const { tools } = await createBashTool({
+        files: {
+          "log.txt": "INFO: started\nERROR: failed\nINFO: done\nERROR: timeout",
+        },
+      });
+
+      assert(tools.readFile.execute, "readFile.execute should be defined");
+      const result = (await tools.readFile.execute(
+        { path: "log.txt", outputFilter: "grep ERROR" },
+        opts,
+      )) as { content: string };
+
+      expect(result.content).toContain("ERROR: failed");
+      expect(result.content).toContain("ERROR: timeout");
+      expect(result.content).not.toContain("INFO");
+    });
+  });
+
+  describe("outputFilter", () => {
+    it("filters bash command output with tail", async () => {
+      const { tools } = await createBashTool({
+        files: {
+          "numbers.txt": "1\n2\n3\n4\n5\n6\n7\n8\n9\n10",
+        },
+      });
+
+      assert(tools.bash.execute, "bash.execute should be defined");
+      const result = (await tools.bash.execute(
+        { command: "cat numbers.txt", outputFilter: "tail -3" },
+        opts,
+      )) as CommandResult;
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.trim()).toBe("8\n9\n10");
+    });
+
+    it("filters bash command output with grep", async () => {
+      const { tools } = await createBashTool({
+        files: testFiles,
+      });
+
+      assert(tools.bash.execute, "bash.execute should be defined");
+      const result = (await tools.bash.execute(
+        { command: "find . -type f", outputFilter: "grep -E '\\.ts$'" },
+        opts,
+      )) as CommandResult;
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("index.ts");
+      expect(result.stdout).toContain("helpers.ts");
+      expect(result.stdout).not.toContain("package.json");
+    });
+
+    it("filters bash command output with head", async () => {
+      const { tools } = await createBashTool({
+        files: {
+          "data.txt": "a\nb\nc\nd\ne",
+        },
+      });
+
+      assert(tools.bash.execute, "bash.execute should be defined");
+      const result = (await tools.bash.execute(
+        { command: "cat data.txt", outputFilter: "head -2" },
+        opts,
+      )) as CommandResult;
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.trim()).toBe("a\nb");
+    });
+  });
+
+  describe("invocation logging", () => {
+    it("stores full output and returns filtered output", async () => {
+      const { tools } = await createBashTool({
+        files: {
+          "numbers.txt": "1\n2\n3\n4\n5",
+        },
+        enableInvocationLog: true,
+      });
+
+      assert(tools.bash.execute, "bash.execute should be defined");
+      assert(tools.readFile.execute, "readFile.execute should be defined");
+
+      const result = (await tools.bash.execute(
+        { command: "cat numbers.txt", outputFilter: "tail -2" },
+        opts,
+      )) as CommandResult & { invocationLogPath: string };
+
+      // Filtered output returned
+      expect(result.stdout.trim()).toBe("4\n5");
+      expect(result.invocationLogPath).toMatch(/\.invocation$/);
+
+      // Full output available in log
+      const logResult = (await tools.readFile.execute(
+        { path: result.invocationLogPath },
+        opts,
+      )) as { content: string };
+
+      expect(logResult.content).toContain("1\n2\n3\n4\n5");
+    });
+
+    it("allows re-filtering invocation log", async () => {
+      const { tools } = await createBashTool({
+        files: {
+          "log.txt":
+            "INFO: start\nERROR: fail1\nINFO: middle\nERROR: fail2\nINFO: end",
+        },
+        enableInvocationLog: true,
+      });
+
+      assert(tools.bash.execute, "bash.execute should be defined");
+      assert(tools.readFile.execute, "readFile.execute should be defined");
+
+      // First, get last 2 lines
+      const result = (await tools.bash.execute(
+        { command: "cat log.txt", outputFilter: "tail -2" },
+        opts,
+      )) as CommandResult & { invocationLogPath: string };
+
+      expect(result.stdout).toContain("fail2");
+      expect(result.stdout).toContain("end");
+
+      // Now re-filter the full log for errors only
+      const errorResult = (await tools.readFile.execute(
+        { path: result.invocationLogPath, outputFilter: "grep ERROR" },
+        opts,
+      )) as { content: string };
+
+      expect(errorResult.content).toContain("ERROR: fail1");
+      expect(errorResult.content).toContain("ERROR: fail2");
+      expect(errorResult.content).not.toContain("INFO");
+    });
   });
 
   describe("writeFile tool", () => {

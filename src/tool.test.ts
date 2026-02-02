@@ -361,6 +361,15 @@ describe("createBashTool", () => {
   });
 });
 
+// Common description sections for tests
+const OUTPUT_FILTERING_SECTION = `OUTPUT FILTERING:
+Use the outputFilter parameter to filter stdout before it is returned.
+Examples:
+  outputFilter: "tail -50"      # Last 50 lines
+  outputFilter: "head -100"     # First 100 lines
+  outputFilter: "grep error"    # Lines containing "error"
+  outputFilter: "grep -i warn"  # Case-insensitive search`;
+
 describe("createBashTool tool prompt integration", () => {
   beforeEach(() => {
     for (const key of Object.keys(mockFiles)) {
@@ -389,7 +398,9 @@ Common operations:
   ls -la              # List files with details
   find . -name '*.ts' # Find files by pattern
   grep -r 'pattern' . # Search file contents
-  cat <file>          # View file contents`);
+  cat <file>          # View file contents
+
+${OUTPUT_FILTERING_SECTION}`);
   });
 
   it("includes format-specific hints for JSON files", async () => {
@@ -414,7 +425,9 @@ Common operations:
   ls -la              # List files with details
   find . -name '*.ts' # Find files by pattern
   grep -r 'pattern' . # Search file contents
-  cat <file>          # View file contents`);
+  cat <file>          # View file contents
+
+${OUTPUT_FILTERING_SECTION}`);
   });
 
   it("includes format-specific hints for YAML files", async () => {
@@ -439,7 +452,9 @@ Common operations:
   ls -la              # List files with details
   find . -name '*.ts' # Find files by pattern
   grep -r 'pattern' . # Search file contents
-  cat <file>          # View file contents`);
+  cat <file>          # View file contents
+
+${OUTPUT_FILTERING_SECTION}`);
   });
 
   it("includes format-specific hints for multiple formats", async () => {
@@ -471,7 +486,9 @@ Common operations:
   ls -la              # List files with details
   find . -name '*.ts' # Find files by pattern
   grep -r 'pattern' . # Search file contents
-  cat <file>          # View file contents`);
+  cat <file>          # View file contents
+
+${OUTPUT_FILTERING_SECTION}`);
   });
 
   it("includes yq for CSV when using just-bash sandbox", async () => {
@@ -497,7 +514,9 @@ Common operations:
   ls -la              # List files with details
   find . -name '*.ts' # Find files by pattern
   grep -r 'pattern' . # Search file contents
-  cat <file>          # View file contents`);
+  cat <file>          # View file contents
+
+${OUTPUT_FILTERING_SECTION}`);
   });
 
   it("includes extraInstructions after tool prompt", async () => {
@@ -523,6 +542,8 @@ Common operations:
   find . -name '*.ts' # Find files by pattern
   grep -r 'pattern' . # Search file contents
   cat <file>          # View file contents
+
+${OUTPUT_FILTERING_SECTION}
 
 Always use TypeScript.`);
   });
@@ -563,7 +584,9 @@ Common operations:
   ls -la              # List files with details
   find . -name '*.ts' # Find files by pattern
   grep -r 'pattern' . # Search file contents
-  cat <file>          # View file contents`);
+  cat <file>          # View file contents
+
+${OUTPUT_FILTERING_SECTION}`);
   });
 
   it("uses empty string toolPrompt to disable tool hints", async () => {
@@ -588,7 +611,9 @@ Common operations:
   ls -la              # List files with details
   find . -name '*.ts' # Find files by pattern
   grep -r 'pattern' . # Search file contents
-  cat <file>          # View file contents`);
+  cat <file>          # View file contents
+
+${OUTPUT_FILTERING_SECTION}`);
   });
 
   it("combines custom toolPrompt with extraInstructions", async () => {
@@ -617,6 +642,8 @@ Common operations:
   find . -name '*.ts' # Find files by pattern
   grep -r 'pattern' . # Search file contents
   cat <file>          # View file contents
+
+${OUTPUT_FILTERING_SECTION}
 
 Always run tests first.`);
   });
