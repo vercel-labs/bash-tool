@@ -31,8 +31,8 @@ importers:
         specifier: ^6.0.13
         version: 6.0.43(zod@3.25.76)
       just-bash:
-        specifier: ^2.9.1
-        version: 2.9.1
+        specifier: ^2.9.3
+        version: 2.9.3
       knip:
         specifier: ^5.80.0
         version: 5.82.1(@types/node@22.19.7)(typescript@5.9.3)
@@ -822,8 +822,8 @@ packages:
   jsonlines@0.1.1:
     resolution: {integrity: sha512-ekDrAGso79Cvf+dtm+mL8OBI2bmAOt3gssYs833De/C9NmIpWDWyUO4zPgB5x2/OhY366dkhgfPMYfwZF7yOZA==}
 
-  just-bash@2.9.1:
-    resolution: {integrity: sha512-/RaMpMEcCfPi8gWRh12cdrkGw/DFpK0ocpoe7BqGtx/WXfFe4q5/rHEhOQumHFJG/chIMQ2PoiMKmWSJcsG/aQ==}
+  just-bash@2.9.3:
+    resolution: {integrity: sha512-eJos/+y5OFYCQX1pMGuukQtcKvs3Vs9MFMssK5ve9YBO7TYeS9UWcT0EnhGIdJ94tT0pMBEQwVXyR3ZnNxfOqw==}
     hasBin: true
 
   kind-of@6.0.3:
@@ -1853,7 +1853,7 @@ snapshots:
 
   jsonlines@0.1.1: {}
 
-  just-bash@2.9.1:
+  just-bash@2.9.3:
     dependencies:
       compressjs: 1.0.3
       diff: 8.0.3
