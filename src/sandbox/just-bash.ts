@@ -45,11 +45,13 @@ export async function createJustBashSandbox(
   // Dynamic import to handle optional peer dependency
   let Bash: typeof import("just-bash").Bash;
   let OverlayFs: typeof import("just-bash").OverlayFs | undefined;
+  let nodePath: typeof import("node:path");
 
   try {
     const module = await import("just-bash");
     Bash = module.Bash;
     OverlayFs = module.OverlayFs;
+    nodePath = await import("node:path");
   } catch {
     throw new Error(
       'just-bash is not installed. Either install it with "npm install just-bash" or provide your own sandbox via the sandbox option.',
@@ -61,7 +63,9 @@ export async function createJustBashSandbox(
 
   if (options.overlayRoot && OverlayFs) {
     // Use OverlayFs for copy-on-write over a real directory
-    const overlay = new OverlayFs({ root: options.overlayRoot });
+    // Resolve to absolute path for OverlayFs
+    const absoluteRoot = nodePath.resolve(options.overlayRoot);
+    const overlay = new OverlayFs({ root: absoluteRoot });
     mountPoint = overlay.getMountPoint();
     bashEnv = new Bash({
       fs: overlay,

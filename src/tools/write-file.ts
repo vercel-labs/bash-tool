@@ -1,6 +1,6 @@
-import nodePath from "node:path";
 import { tool } from "ai";
 import { z } from "zod";
+import { posixResolve } from "../posix-path.js";
 import type { Sandbox } from "../types.js";
 
 const writeFileSchema = z.object({
@@ -22,7 +22,7 @@ export function createWriteFileTool(options: CreateWriteFileToolOptions) {
       "Write content to a file in the sandbox. Creates parent directories if needed.",
     inputSchema: writeFileSchema,
     execute: async ({ path, content }) => {
-      const resolvedPath = nodePath.posix.resolve(cwd, path);
+      const resolvedPath = posixResolve(cwd, path);
       await sandbox.writeFiles([{ path: resolvedPath, content }]);
       return { success: true };
     },
