@@ -20,6 +20,7 @@ export function createReadFileTool(options: CreateReadFileToolOptions) {
     description: "Read the contents of a file from the sandbox.",
     inputSchema: readFileSchema,
     execute: async ({ path }) => {
+      "use step";
       const resolvedPath = nodePath.posix.resolve(cwd, path);
       const content = await sandbox.readFile(resolvedPath);
       return { content };

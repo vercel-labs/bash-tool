@@ -114,6 +114,7 @@ export function createBashExecuteTool(options: CreateBashToolOptions) {
     description: generateDescription(options),
     inputSchema: bashSchema,
     execute: async ({ command: originalCommand }) => {
+      "use step";
       // Allow modification of command before execution
       let command = originalCommand;
       if (onBeforeBashCall) {
@@ -134,6 +135,7 @@ export function createBashExecuteTool(options: CreateBashToolOptions) {
         ...result,
         stdout: truncateOutput(result.stdout, maxOutputLength, "stdout"),
         stderr: truncateOutput(result.stderr, maxOutputLength, "stderr"),
+        sandbox,
       };
 
       // Allow modification of result after execution
