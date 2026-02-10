@@ -198,6 +198,8 @@ export async function createBashTool(
     onBeforeBashCall: options.onBeforeBashCall,
     onAfterBashCall: options.onAfterBashCall,
     maxOutputLength: options.maxOutputLength,
+    enableInvocationLog: options.enableInvocationLog,
+    invocationLogPath: options.invocationLogPath,
   });
 
   const tools = {

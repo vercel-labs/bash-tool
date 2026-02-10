@@ -156,6 +156,20 @@ export interface CreateBashToolOptions {
    * @default 1000
    */
   maxFiles?: number;
+
+  /**
+   * Enable storing full command output in invocation log files.
+   * When enabled, full unfiltered output is stored in files that can be
+   * re-read and filtered later via the readFile tool.
+   * @default false
+   */
+  enableInvocationLog?: boolean;
+
+  /**
+   * Path (relative to destination) where invocation log files are stored.
+   * @default ".bash-tool/commands"
+   */
+  invocationLogPath?: string;
 }
 
 // Import actual tool creators for proper typing
