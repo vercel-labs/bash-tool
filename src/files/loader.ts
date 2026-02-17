@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import fg from "fast-glob";
 
-export interface LoadFilesOptions {
+interface LoadFilesOptions {
   files?: Record<string, string>;
   uploadDirectory?: {
     source: string;
@@ -10,7 +10,7 @@ export interface LoadFilesOptions {
   };
 }
 
-export interface FileEntry {
+interface FileEntry {
   path: string;
   content: Buffer;
 }

@@ -19,7 +19,7 @@ export interface JustBashLike {
 /**
  * Options for creating a just-bash sandbox.
  */
-export interface JustBashSandboxOptions {
+interface JustBashSandboxOptions {
   /** Initial files to populate the virtual filesystem */
   files?: Record<string, string>;
   /** Working directory */

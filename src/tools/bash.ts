@@ -16,7 +16,7 @@ const bashSchema = z.object({
 /** Default maximum length for stdout/stderr output (30KB) */
 export const DEFAULT_MAX_OUTPUT_LENGTH = 30_000;
 
-export interface CreateBashToolOptions {
+interface CreateBashToolOptions {
   sandbox: Sandbox;
   /** Working directory for command execution */
   cwd: string;
@@ -27,11 +27,11 @@ export interface CreateBashToolOptions {
   toolPrompt?: string;
   /** Callback before command execution, can modify the command */
   onBeforeBashCall?: (
-    input: BeforeBashCallInput
+    input: BeforeBashCallInput,
   ) => BeforeBashCallOutput | undefined;
   /** Callback after command execution, can modify the result */
   onAfterBashCall?: (
-    input: AfterBashCallInput
+    input: AfterBashCallInput,
   ) => AfterBashCallOutput | undefined;
   /**
    * Maximum length (in characters) for stdout and stderr output.
@@ -49,7 +49,7 @@ export interface CreateBashToolOptions {
 function truncateOutput(
   output: string,
   maxLength: number,
-  streamName: "stdout" | "stderr"
+  streamName: "stdout" | "stderr",
 ): string {
   if (output.length <= maxLength) {
     return output;
@@ -57,7 +57,7 @@ function truncateOutput(
   const truncatedLength = output.length - maxLength;
   return `${output.slice(
     0,
-    maxLength
+    maxLength,
   )}\n\n[${streamName} truncated: ${truncatedLength} characters removed]`;
 }
 
@@ -108,13 +108,13 @@ function generateDescription(options: CreateBashToolOptions): string {
   if (experimentalTeeTransform) {
     lines.push("INTERMEDIATE OUTPUT CAPTURE:");
     lines.push(
-      "All commands in pipelines have their stdout captured to /tmp/bash-tool/."
+      "All commands in pipelines have their stdout captured to /tmp/bash-tool/.",
     );
     lines.push(
-      "The result includes a `teeFiles` array with `stdoutFile` paths for each command."
+      "The result includes a `teeFiles` array with `stdoutFile` paths for each command.",
     );
     lines.push(
-      "If you pipe output (e.g., `pnpm test | tail -5`), you can read the full output"
+      "If you pipe output (e.g., `pnpm test | tail -5`), you can read the full output",
     );
     lines.push("of earlier pipeline stages without re-running:");
     lines.push("  cat /tmp/bash-tool/*-pnpm.stdout.txt | grep something");
@@ -158,7 +158,7 @@ export function createBashExecuteTool(options: CreateBashToolOptions) {
       if (experimentalTeeTransform) {
         // Transform command with TeePlugin for intermediate output capture
         const pipeline = new BashTransformPipeline().use(
-          new TeePlugin({ outputDir: "/tmp/bash-tool" })
+          new TeePlugin({ outputDir: "/tmp/bash-tool" }),
         );
         const transformed = pipeline.transform(command);
 
@@ -170,7 +170,7 @@ export function createBashExecuteTool(options: CreateBashToolOptions) {
           (f: { command: string; stdoutFile: string }) => ({
             command: f.command,
             stdoutFile: f.stdoutFile,
-          })
+          }),
         );
       } else {
         // Prepend cd to ensure commands run in the working directory

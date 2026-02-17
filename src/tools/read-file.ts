@@ -7,7 +7,7 @@ const readFileSchema = z.object({
   path: z.string().describe("The path to the file to read"),
 });
 
-export interface CreateReadFileToolOptions {
+interface CreateReadFileToolOptions {
   sandbox: Sandbox;
   /** Working directory for resolving relative paths */
   cwd: string;

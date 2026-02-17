@@ -9,7 +9,7 @@ const skillSchema = z.object({
   skillName: z.string().describe("The name of the skill to load"),
 });
 
-export interface CreateSkillToolOptions {
+interface CreateSkillToolOptions {
   /** Registry of discovered skills */
   skills: Skill[];
 }

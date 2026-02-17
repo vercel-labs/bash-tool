@@ -42,7 +42,7 @@ export function extractBody(content: string): string {
   }
 }
 
-export interface DiscoverSkillsOptions {
+interface DiscoverSkillsOptions {
   /** Local directory containing skill subdirectories */
   skillsDirectory: string;
   /** Base path in sandbox where skills will be uploaded */
