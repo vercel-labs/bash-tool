@@ -388,4 +388,82 @@ Common operations:
       `modified: ${"x".repeat(100)}\n\n[stdout truncated: 50 characters removed]`,
     );
   });
+
+  it("includes tee description when experimentalTeeTransform is true", () => {
+    const tool = createBashExecuteTool({
+      sandbox: mockSandbox,
+      cwd: "/workspace",
+      experimentalTeeTransform: true,
+    });
+
+    expect(tool.description).toContain("INTERMEDIATE OUTPUT CAPTURE:");
+    expect(tool.description).toContain("/tmp/bash-tool/");
+    expect(tool.description).toContain("`teeFiles`");
+    expect(tool.description).toContain("`stdoutFile`");
+  });
+
+  it("excludes tee description when experimentalTeeTransform is false", () => {
+    const tool = createBashExecuteTool({
+      sandbox: mockSandbox,
+      cwd: "/workspace",
+    });
+
+    expect(tool.description).not.toContain("INTERMEDIATE OUTPUT CAPTURE:");
+  });
+
+  it("returns teeFiles when experimentalTeeTransform is true", async () => {
+    mockSandbox.executeCommand.mockResolvedValue({
+      stdout: "hello",
+      stderr: "",
+      exitCode: 0,
+    });
+
+    const tool = createBashExecuteTool({
+      sandbox: mockSandbox,
+      cwd: "/workspace",
+      experimentalTeeTransform: true,
+    });
+
+    // biome-ignore lint/style/noNonNullAssertion: test mock
+    const result = (await tool.execute!(
+      { command: "echo hello | grep hello" },
+      {} as never,
+    )) as {
+      stdout: string;
+      teeFiles: Array<{ command: string; stdoutFile: string }>;
+    };
+
+    expect(result.teeFiles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          command: expect.any(String),
+          stdoutFile: expect.stringContaining("/tmp/bash-tool/"),
+        }),
+      ]),
+    );
+  });
+
+  it("does not return teeFiles when experimentalTeeTransform is off", async () => {
+    mockSandbox.executeCommand.mockResolvedValue({
+      stdout: "hello",
+      stderr: "",
+      exitCode: 0,
+    });
+
+    const tool = createBashExecuteTool({
+      sandbox: mockSandbox,
+      cwd: "/workspace",
+    });
+
+    // biome-ignore lint/style/noNonNullAssertion: test mock
+    const result = (await tool.execute!(
+      { command: "echo hello | grep hello" },
+      {} as never,
+    )) as {
+      stdout: string;
+      teeFiles?: unknown;
+    };
+
+    expect(result.teeFiles).toBeUndefined();
+  });
 });

@@ -1,4 +1,5 @@
 import { tool } from "ai";
+import { BashTransformPipeline, TeePlugin } from "just-bash";
 import { z } from "zod";
 import type {
   AfterBashCallInput,
@@ -26,11 +27,11 @@ export interface CreateBashToolOptions {
   toolPrompt?: string;
   /** Callback before command execution, can modify the command */
   onBeforeBashCall?: (
-    input: BeforeBashCallInput,
+    input: BeforeBashCallInput
   ) => BeforeBashCallOutput | undefined;
   /** Callback after command execution, can modify the result */
   onAfterBashCall?: (
-    input: AfterBashCallInput,
+    input: AfterBashCallInput
   ) => AfterBashCallOutput | undefined;
   /**
    * Maximum length (in characters) for stdout and stderr output.
@@ -38,6 +39,8 @@ export interface CreateBashToolOptions {
    * @default 30000
    */
   maxOutputLength?: number;
+  /** Enable experimental TeePlugin transform for intermediate output capture. */
+  experimentalTeeTransform?: boolean;
 }
 
 /**
@@ -46,17 +49,26 @@ export interface CreateBashToolOptions {
 function truncateOutput(
   output: string,
   maxLength: number,
-  streamName: "stdout" | "stderr",
+  streamName: "stdout" | "stderr"
 ): string {
   if (output.length <= maxLength) {
     return output;
   }
   const truncatedLength = output.length - maxLength;
-  return `${output.slice(0, maxLength)}\n\n[${streamName} truncated: ${truncatedLength} characters removed]`;
+  return `${output.slice(
+    0,
+    maxLength
+  )}\n\n[${streamName} truncated: ${truncatedLength} characters removed]`;
 }
 
 function generateDescription(options: CreateBashToolOptions): string {
-  const { cwd, files, extraInstructions, toolPrompt } = options;
+  const {
+    cwd,
+    files,
+    extraInstructions,
+    toolPrompt,
+    experimentalTeeTransform,
+  } = options;
 
   const lines: string[] = [
     "Execute bash commands in the sandbox environment.",
@@ -93,6 +105,22 @@ function generateDescription(options: CreateBashToolOptions): string {
   lines.push("  cat <file>          # View file contents");
   lines.push("");
 
+  if (experimentalTeeTransform) {
+    lines.push("INTERMEDIATE OUTPUT CAPTURE:");
+    lines.push(
+      "All commands in pipelines have their stdout captured to /tmp/bash-tool/."
+    );
+    lines.push(
+      "The result includes a `teeFiles` array with `stdoutFile` paths for each command."
+    );
+    lines.push(
+      "If you pipe output (e.g., `pnpm test | tail -5`), you can read the full output"
+    );
+    lines.push("of earlier pipeline stages without re-running:");
+    lines.push("  cat /tmp/bash-tool/*-pnpm.stdout.txt | grep something");
+    lines.push("");
+  }
+
   if (extraInstructions) {
     lines.push(extraInstructions);
     lines.push("");
@@ -108,6 +136,7 @@ export function createBashExecuteTool(options: CreateBashToolOptions) {
     onBeforeBashCall,
     onAfterBashCall,
     maxOutputLength = DEFAULT_MAX_OUTPUT_LENGTH,
+    experimentalTeeTransform,
   } = options;
 
   return tool({
@@ -123,8 +152,30 @@ export function createBashExecuteTool(options: CreateBashToolOptions) {
         }
       }
 
-      // Prepend cd to ensure commands run in the working directory
-      const fullCommand = `cd "${cwd}" && ${command}`;
+      let fullCommand: string;
+      let teeFiles: Array<{ command: string; stdoutFile: string }> | undefined;
+
+      if (experimentalTeeTransform) {
+        // Transform command with TeePlugin for intermediate output capture
+        const pipeline = new BashTransformPipeline().use(
+          new TeePlugin({ outputDir: "/tmp/bash-tool" })
+        );
+        const transformed = pipeline.transform(command);
+
+        // Prepend mkdir + cd to ensure the tee directory and working directory exist
+        fullCommand = `mkdir -p /tmp/bash-tool && cd "${cwd}" && ${transformed.script}`;
+
+        // Map tee metadata to succinct format
+        teeFiles = transformed.metadata.teeFiles.map(
+          (f: { command: string; stdoutFile: string }) => ({
+            command: f.command,
+            stdoutFile: f.stdoutFile,
+          })
+        );
+      } else {
+        // Prepend cd to ensure commands run in the working directory
+        fullCommand = `cd "${cwd}" && ${command}`;
+      }
 
       // Execute the command
       let result = await sandbox.executeCommand(fullCommand);
@@ -134,6 +185,7 @@ export function createBashExecuteTool(options: CreateBashToolOptions) {
         ...result,
         stdout: truncateOutput(result.stdout, maxOutputLength, "stdout"),
         stderr: truncateOutput(result.stderr, maxOutputLength, "stderr"),
+        ...(teeFiles && { teeFiles }),
       };
 
       // Allow modification of result after execution

@@ -198,6 +198,7 @@ export async function createBashTool(
     onBeforeBashCall: options.onBeforeBashCall,
     onAfterBashCall: options.onAfterBashCall,
     maxOutputLength: options.maxOutputLength,
+    experimentalTeeTransform: options.experimentalTeeTransform,
   });
 
   const tools = {

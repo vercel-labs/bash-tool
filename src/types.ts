@@ -5,6 +5,7 @@ export interface CommandResult {
   stdout: string;
   stderr: string;
   exitCode: number;
+  teeFiles?: Array<{ command: string; stdoutFile: string }>;
 }
 
 export interface Sandbox {
@@ -156,6 +157,14 @@ export interface CreateBashToolOptions {
    * @default 1000
    */
   maxFiles?: number;
+
+  /**
+   * Enable experimental TeePlugin transform for intermediate output capture.
+   * When enabled, all pipeline commands have their stdout captured to /tmp/bash-tool/,
+   * allowing the LLM to read intermediate output without re-running commands.
+   * @default false
+   */
+  experimentalTeeTransform?: boolean;
 }
 
 // Import actual tool creators for proper typing

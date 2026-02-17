@@ -18,63 +18,68 @@ vi.mock("ai", () => ({
 const mockFiles: Record<string, string> = {};
 let mockCwd = "/workspace";
 
-vi.mock("just-bash", () => ({
-  Bash: class MockBash {
-    fs: {
-      readFile: (path: string) => Promise<string>;
-      writeFile: (path: string, content: string) => Promise<void>;
-    };
-
-    constructor(options: { files?: Record<string, string>; cwd?: string }) {
-      Object.assign(mockFiles, options.files || {});
-      mockCwd = options.cwd || "/workspace";
-
-      this.fs = {
-        readFile: async (path: string) => {
-          if (mockFiles[path]) {
-            return mockFiles[path];
-          }
-          throw new Error(`ENOENT: no such file: ${path}`);
-        },
-        writeFile: async (path: string, content: string) => {
-          mockFiles[path] = content;
-        },
+vi.mock("just-bash", async () => {
+  const actual = await vi.importActual<typeof import("just-bash")>("just-bash");
+  return {
+    BashTransformPipeline: actual.BashTransformPipeline,
+    TeePlugin: actual.TeePlugin,
+    Bash: class MockBash {
+      fs: {
+        readFile: (path: string) => Promise<string>;
+        writeFile: (path: string, content: string) => Promise<void>;
       };
-    }
 
-    async exec(command: string) {
-      if (command === "ls") {
-        const files = Object.keys(mockFiles).join("\n");
-        return { stdout: files, stderr: "", exitCode: 0 };
-      }
+      constructor(options: { files?: Record<string, string>; cwd?: string }) {
+        Object.assign(mockFiles, options.files || {});
+        mockCwd = options.cwd || "/workspace";
 
-      // Handle combined ls for bin directories (tool discovery)
-      if (command.startsWith("ls /usr/bin /usr/local/bin")) {
-        return {
-          stdout:
-            "/usr/bin:\ncat\ngrep\nsed\nawk\nhead\ntail\nsort\ncut\n/usr/local/bin:\njq\nyq",
-          stderr: "",
-          exitCode: 0,
+        this.fs = {
+          readFile: async (path: string) => {
+            if (mockFiles[path]) {
+              return mockFiles[path];
+            }
+            throw new Error(`ENOENT: no such file: ${path}`);
+          },
+          writeFile: async (path: string, content: string) => {
+            mockFiles[path] = content;
+          },
         };
       }
 
-      if (command === "pwd") {
-        return { stdout: mockCwd, stderr: "", exitCode: 0 };
-      }
+      async exec(command: string) {
+        if (command === "ls") {
+          const files = Object.keys(mockFiles).join("\n");
+          return { stdout: files, stderr: "", exitCode: 0 };
+        }
 
-      return { stdout: "", stderr: "", exitCode: 0 };
-    }
-  },
-  OverlayFs: class MockOverlayFs {
-    private root: string;
-    constructor(options: { root: string }) {
-      this.root = options.root;
-    }
-    getMountPoint() {
-      return `/home/user/project`;
-    }
-  },
-}));
+        // Handle combined ls for bin directories (tool discovery)
+        if (command.startsWith("ls /usr/bin /usr/local/bin")) {
+          return {
+            stdout:
+              "/usr/bin:\ncat\ngrep\nsed\nawk\nhead\ntail\nsort\ncut\n/usr/local/bin:\njq\nyq",
+            stderr: "",
+            exitCode: 0,
+          };
+        }
+
+        if (command === "pwd") {
+          return { stdout: mockCwd, stderr: "", exitCode: 0 };
+        }
+
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }
+    },
+    OverlayFs: class MockOverlayFs {
+      private root: string;
+      constructor(options: { root: string }) {
+        this.root = options.root;
+      }
+      getMountPoint() {
+        return `/home/user/project`;
+      }
+    },
+  };
+});
 
 import { createBashTool } from "./tool.js";
 
