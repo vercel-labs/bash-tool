@@ -1,14 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import matter from "gray-matter";
+import { parseFrontmatter as parseFm } from "./frontmatter.js";
 import type { DiscoveredSkill, SkillMetadata } from "./types.js";
 
 /**
- * Parse YAML frontmatter from SKILL.md content using gray-matter.
+ * Parse YAML frontmatter from SKILL.md content.
  */
 export function parseFrontmatter(content: string): SkillMetadata | null {
   try {
-    const { data } = matter(content);
+    const { data } = parseFm(content);
 
     // Validate required fields
     if (
@@ -35,7 +35,7 @@ export function parseFrontmatter(content: string): SkillMetadata | null {
  */
 export function extractBody(content: string): string {
   try {
-    const { content: body } = matter(content);
+    const { content: body } = parseFm(content);
     return body.trim();
   } catch {
     return content.trim();
