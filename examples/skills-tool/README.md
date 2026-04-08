@@ -36,7 +36,7 @@ import {
 } from "bash-tool";
 
 // Discover skills and get files
-const { loadSkill, skills, files, instructions } = await createSkillTool({
+const { skill, skills, files, instructions } = await createSkillTool({
   skillsDirectory: "./skills",
 });
 
@@ -50,7 +50,7 @@ const { tools } = await createBashTool({
 const agent = new ToolLoopAgent({
   model: "anthropic/claude-haiku-4.5",
   tools: {
-    loadSkill,
+    skill,
     bash: tools.bash,
   },
 });
