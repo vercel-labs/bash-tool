@@ -55,7 +55,9 @@ Execute bash commands in the sandbox environment. For analysis agents, this may 
 
 ### `readFile`
 
-Read the contents of a file from the sandbox.
+Read the contents of a file from the sandbox. For image files (png, jpg,
+jpeg, gif, webp), returns visual content the model can see when the sandbox
+supports `readFileBuffer`.
 
 **Input:**
 
@@ -63,7 +65,9 @@ Read the contents of a file from the sandbox.
 
 **Returns:**
 
-- `content` (string): The file contents
+- `content` (string): The file contents for text files
+- `data` (string): Base64-encoded image data for supported image files
+- `mediaType` (string): The image MIME type
 
 ### `writeFile`
 
@@ -169,6 +173,10 @@ const customSandbox: Sandbox = {
   },
   async writeFiles(files) {
     // Your implementation here - files is Array<{path, content}>
+  },
+  async readFileBuffer(path) {
+    // Optional: implement to enable image support in readFile
+    return new Uint8Array();
   },
 };
 
