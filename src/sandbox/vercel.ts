@@ -70,6 +70,18 @@ export function wrapVercelSandbox(vercelSandbox: VercelSandboxLike): Sandbox {
       return streamToString(stream);
     },
 
+    async readFileBuffer(filePath: string): Promise<Uint8Array> {
+      const stream = await vercelSandbox.readFile({ path: filePath });
+      if (stream === null) {
+        throw new Error(`File not found: ${filePath}`);
+      }
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks);
+    },
+
     async writeFiles(
       files: Array<{ path: string; content: string | Buffer }>,
     ): Promise<void> {

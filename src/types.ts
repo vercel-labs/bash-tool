@@ -11,6 +11,7 @@ export interface CommandResult {
 export interface Sandbox {
   executeCommand(command: string): Promise<CommandResult>;
   readFile(path: string): Promise<string>;
+  readFileBuffer?(path: string): Promise<Uint8Array>;
   writeFiles(
     files: Array<{ path: string; content: string | Buffer }>,
   ): Promise<void>;

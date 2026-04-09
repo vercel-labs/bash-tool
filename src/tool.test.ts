@@ -11,6 +11,7 @@ vi.mock("ai", () => ({
     description: config.description,
     inputSchema: config.inputSchema,
     execute: config.execute,
+    toModelOutput: config.toModelOutput,
   })),
 }));
 
@@ -26,6 +27,7 @@ vi.mock("just-bash", async () => {
     Bash: class MockBash {
       fs: {
         readFile: (path: string) => Promise<string>;
+        readFileBuffer: (path: string) => Promise<Uint8Array>;
         writeFile: (path: string, content: string) => Promise<void>;
       };
 
@@ -35,9 +37,12 @@ vi.mock("just-bash", async () => {
 
         this.fs = {
           readFile: async (path: string) => {
-            if (mockFiles[path]) {
-              return mockFiles[path];
-            }
+            if (mockFiles[path]) return mockFiles[path];
+            throw new Error(`ENOENT: no such file: ${path}`);
+          },
+          readFileBuffer: async (path: string) => {
+            if (mockFiles[path])
+              return new TextEncoder().encode(mockFiles[path]);
             throw new Error(`ENOENT: no such file: ${path}`);
           },
           writeFile: async (path: string, content: string) => {
@@ -332,6 +337,67 @@ describe("createBashTool", () => {
       opts,
     )) as CommandResult;
     expect(result.stdout).toBe("custom");
+  });
+
+  it("readFile returns image data for png files", async () => {
+    const pngBytes = new Uint8Array([0x01, 0x02, 0x03]);
+    mockFiles["/workspace/chart.png"] = String.fromCharCode(...pngBytes);
+
+    const { tools } = await createBashTool();
+    assert(tools.readFile.execute, "readFile.execute should be defined");
+    const result = (await tools.readFile.execute(
+      { path: "/workspace/chart.png" },
+      opts,
+    )) as { data: string; mediaType: string };
+    expect(result.mediaType).toBe("image/png");
+    expect(result.data).toBe(Buffer.from(pngBytes).toString("base64"));
+  });
+
+  it("readFile toModelOutput returns image-data for images", async () => {
+    const { tools } = await createBashTool();
+    assert(tools.readFile.toModelOutput, "toModelOutput should be defined");
+    const result = tools.readFile.toModelOutput({
+      toolCallId: "test",
+      input: { path: "x.png" },
+      output: { data: "abc123", mediaType: "image/png" },
+    });
+    expect(result).toEqual({
+      type: "content",
+      value: [{ type: "image-data", data: "abc123", mediaType: "image/png" }],
+    });
+  });
+
+  it("readFile toModelOutput returns json for text files", async () => {
+    const { tools } = await createBashTool();
+    assert(tools.readFile.toModelOutput, "toModelOutput should be defined");
+    const result = tools.readFile.toModelOutput({
+      toolCallId: "test",
+      input: { path: "x.txt" },
+      output: { content: "hello" },
+    });
+    expect(result).toEqual({
+      type: "json",
+      value: { content: "hello" },
+    });
+  });
+
+  it("readFile falls back to text when sandbox lacks readFileBuffer", async () => {
+    // The mock will have readFileBuffer via our update, so test the fallback
+    // by creating a custom sandbox without it
+    const { createBashTool: realCreate } = await import("./tool.js");
+    const customSandbox = {
+      executeCommand: async () => ({ stdout: "", stderr: "", exitCode: 0 }),
+      readFile: async () => "text-content",
+      writeFiles: async () => {},
+      // no readFileBuffer
+    };
+    const { tools } = await realCreate({ sandbox: customSandbox });
+    assert(tools.readFile.execute, "readFile.execute should be defined");
+    const result = (await tools.readFile.execute(
+      { path: "/workspace/test.png" },
+      opts,
+    )) as { content: string };
+    expect(result.content).toBe("text-content");
   });
 
   it("writes files in batches of 20 to custom sandbox", async () => {

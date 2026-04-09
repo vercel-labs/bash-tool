@@ -111,7 +111,7 @@ const { bash } = await createBashTool({
 
 - **just-bash is simulated** - Cannot support python, node.js or binaries; use @vercel/sandbox for a full VM. So, createBashTool supports full VMs, it is just the default that does not
 - **No persistent state between calls** - Each `createBashTool` starts fresh, but the tool itself has persistence and it can be achieved across serverless function invocations by passing in the same sandbox across `createBashTool` invocations
-- **Text files only** - `files` option accepts strings, not buffers
+- **Text files only for `files` option** - `files` accepts strings, not buffers. However, `readFile` returns image files (png, jpg, jpeg, gif, webp) as visual content the model can see when `readFileBuffer` is available on the sandbox.
 - **No streaming** - Command output returned after completion
 
 ## Error Handling
