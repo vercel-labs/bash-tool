@@ -184,6 +184,7 @@ export async function createBashTool(
       filenames: fileList,
       isJustBash: usingJustBash,
       toolPrompt: options.promptOptions?.toolPrompt,
+      additionalTools: options.promptOptions?.additionalTools,
     }),
     fileWrittenPromise,
   ]);

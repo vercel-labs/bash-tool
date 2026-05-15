@@ -10,6 +10,11 @@ export interface BashToolInfo {
   category: BashToolCategory;
 }
 
+export interface AdditionalToolPromptInfo extends BashToolInfo {
+  /** File formats where this tool should be suggested as a primary option. */
+  formats?: FileFormat[];
+}
+
 export type BashToolCategory =
   | "search"
   | "transform"
@@ -321,6 +326,8 @@ export interface ToolPromptOptions {
   isJustBash?: boolean;
   /** Custom tool prompt. If provided, skips tool discovery and returns this value. */
   toolPrompt?: string;
+  /** Extra commands to include in generated tool and format hints. */
+  additionalTools?: AdditionalToolPromptInfo[];
 }
 
 /**
@@ -341,7 +348,13 @@ export interface ToolPromptOptions {
 export async function createToolPrompt(
   options: ToolPromptOptions,
 ): Promise<string> {
-  const { sandbox, filenames, isJustBash = false, toolPrompt } = options;
+  const {
+    sandbox,
+    filenames,
+    isJustBash = false,
+    toolPrompt,
+    additionalTools = [],
+  } = options;
 
   // Return custom toolPrompt if provided
   if (toolPrompt !== undefined) {
@@ -350,6 +363,9 @@ export async function createToolPrompt(
 
   // Discover available tools
   const availableTools = await discoverAvailableTools(sandbox);
+  for (const tool of additionalTools) {
+    availableTools.add(tool.name);
+  }
 
   if (availableTools.size === 0) {
     return "";
@@ -390,6 +406,13 @@ export async function createToolPrompt(
     if (format === "csv" && isJustBash) {
       formatToolNames = ["yq", ...formatToolNames];
     }
+
+    const additionalFormatTools = additionalTools
+      .filter((tool) => tool.formats?.includes(format))
+      .map((tool) => tool.name);
+    formatToolNames = [
+      ...new Set([...additionalFormatTools, ...formatToolNames]),
+    ];
 
     const formatTools = formatToolNames.filter((t) => availableTools.has(t));
     if (formatTools.length > 0) {
