@@ -8,7 +8,7 @@ const writeFileSchema = z.object({
   content: z.string().describe("The content to write to the file"),
 });
 
-interface CreateWriteFileToolOptions {
+export interface CreateWriteFileToolOptions {
   sandbox: Sandbox;
   /** Working directory for resolving relative paths */
   cwd: string;
