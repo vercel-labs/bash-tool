@@ -571,6 +571,41 @@ Common operations:
   cat <file>          # View file contents`);
   });
 
+  it("adds custom prompt tools without replacing generated hints", async () => {
+    const { tools } = await createBashTool({
+      files: { "data.json": "{}" },
+      promptOptions: {
+        additionalTools: [
+          {
+            name: "json-query",
+            purpose: "Query JSON with a custom command",
+            category: "structured-data",
+            formats: ["json"],
+          },
+        ],
+      },
+    });
+
+    expect(
+      tools.bash.description,
+    ).toBe(`Execute bash commands in the sandbox environment.
+
+WORKING DIRECTORY: /workspace
+All commands execute from this directory. Use relative paths from here.
+
+Available files:
+  data.json
+
+Available tools: awk, cat, cut, grep, head, jq, json-query, sed, sort, tail, yq, and more
+For JSON: json-query, jq, grep
+
+Common operations:
+  ls -la              # List files with details
+  find . -name '*.ts' # Find files by pattern
+  grep -r 'pattern' . # Search file contents
+  cat <file>          # View file contents`);
+  });
+
   it("uses empty string toolPrompt to disable tool hints", async () => {
     const { tools } = await createBashTool({
       files: { "data.json": "{}" },

@@ -332,6 +332,26 @@ For YAML: yq, grep, sed`);
 For JSON: grep, sed, cat`);
   });
 
+  it("includes additional tools in generated and format-specific hints", async () => {
+    const sandbox = createMockSandbox(["cat", "grep", "sed"]);
+
+    const prompt = await createToolPrompt({
+      sandbox,
+      filenames: ["data.json"],
+      additionalTools: [
+        {
+          name: "json-query",
+          purpose: "Query JSON with a custom command",
+          category: "structured-data",
+          formats: ["json"],
+        },
+      ],
+    });
+
+    expect(prompt).toBe(`Available tools: cat, grep, json-query, sed, and more
+For JSON: json-query, grep, sed`);
+  });
+
   it("returns custom toolPrompt when provided", async () => {
     const sandbox = createMockSandbox(["cat", "grep", "sed"]);
 
@@ -339,6 +359,14 @@ For JSON: grep, sed, cat`);
       sandbox,
       filenames: ["data.json"],
       toolPrompt: "Custom tool prompt",
+      additionalTools: [
+        {
+          name: "json-query",
+          purpose: "Query JSON with a custom command",
+          category: "structured-data",
+          formats: ["json"],
+        },
+      ],
     });
 
     expect(prompt).toBe("Custom tool prompt");

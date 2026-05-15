@@ -10,6 +10,7 @@ export type {
 export { createBashTool } from "./tool.js";
 export { DEFAULT_MAX_OUTPUT_LENGTH } from "./tools/bash.js";
 export type {
+  AdditionalToolPromptInfo,
   BashToolCategory,
   BashToolInfo,
   FileFormat,

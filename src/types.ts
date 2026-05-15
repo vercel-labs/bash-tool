@@ -1,5 +1,6 @@
 import type { Sandbox as VercelSandbox } from "@vercel/sandbox";
 import type { JustBashLike } from "./sandbox/just-bash.js";
+import type { AdditionalToolPromptInfo } from "./tools-prompt.js";
 
 export interface CommandResult {
   stdout: string;
@@ -61,6 +62,12 @@ export interface PromptOptions {
    * When provided, skips tool discovery entirely.
    */
   toolPrompt?: string;
+
+  /**
+   * Extra commands to include in the generated tool prompt.
+   * Useful when custom sandbox commands are available but do not appear in bin directories.
+   */
+  additionalTools?: AdditionalToolPromptInfo[];
 }
 
 export interface CreateBashToolOptions {
