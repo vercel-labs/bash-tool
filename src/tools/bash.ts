@@ -16,7 +16,7 @@ const bashSchema = z.object({
 /** Default maximum length for stdout/stderr output (30KB) */
 export const DEFAULT_MAX_OUTPUT_LENGTH = 30_000;
 
-interface CreateBashToolOptions {
+export interface CreateBashExecuteToolOptions {
   sandbox: Sandbox;
   /** Working directory for command execution */
   cwd: string;
@@ -61,7 +61,7 @@ function truncateOutput(
   )}\n\n[${streamName} truncated: ${truncatedLength} characters removed]`;
 }
 
-function generateDescription(options: CreateBashToolOptions): string {
+function generateDescription(options: CreateBashExecuteToolOptions): string {
   const {
     cwd,
     files,
@@ -129,7 +129,7 @@ function generateDescription(options: CreateBashToolOptions): string {
   return lines.join("\n").trim();
 }
 
-export function createBashExecuteTool(options: CreateBashToolOptions) {
+export function createBashExecuteTool(options: CreateBashExecuteToolOptions) {
   const {
     sandbox,
     cwd,
