@@ -57,7 +57,7 @@
   },
   "dependencies": {
     "fast-glob": "^3.3.2",
-    "just-bash": "^2.14.0",
+    "just-bash": "^3.0.1",
     "yaml": "^2.8.3",
     "zod": "^3.23.8"
   },
@@ -73,7 +73,7 @@
   "peerDependencies": {
     "@vercel/sandbox": "*",
     "ai": "^6.0.0",
-    "just-bash": "^2.9.3"
+    "just-bash": "^2.9.3 || ^3.0.0"
   },
   "peerDependenciesMeta": {
     "just-bash": {
