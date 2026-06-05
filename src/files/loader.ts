@@ -38,12 +38,14 @@ export async function* streamFiles(
     const { source, include = "**/*" } = options.uploadDirectory;
     const absoluteSource = path.resolve(source);
 
-    const foundPaths = await fg(include, {
-      cwd: absoluteSource,
-      dot: true,
-      onlyFiles: true,
-      ignore: ["**/node_modules/**", "**/.git/**"],
-    });
+    const foundPaths = (
+      await fg(include, {
+        cwd: absoluteSource,
+        dot: true,
+        onlyFiles: true,
+        ignore: ["**/node_modules/**", "**/.git/**"],
+      })
+    ).sort();
 
     for (const relativePath of foundPaths) {
       if (yieldedPaths.has(relativePath)) {
@@ -69,12 +71,14 @@ export async function getFilePaths(
     const { source, include = "**/*" } = options.uploadDirectory;
     const absoluteSource = path.resolve(source);
 
-    const foundPaths = await fg(include, {
-      cwd: absoluteSource,
-      dot: true,
-      onlyFiles: true,
-      ignore: ["**/node_modules/**", "**/.git/**"],
-    });
+    const foundPaths = (
+      await fg(include, {
+        cwd: absoluteSource,
+        dot: true,
+        onlyFiles: true,
+        ignore: ["**/node_modules/**", "**/.git/**"],
+      })
+    ).sort();
     paths.push(...foundPaths);
   }
 
