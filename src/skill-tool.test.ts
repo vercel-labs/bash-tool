@@ -1,12 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { ToolExecutionOptions } from "ai";
 import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
 import { experimental_createSkillTool as createSkillTool } from "./skill-tool.js";
 import { createBashTool } from "./tool.js";
 
 // AI SDK tool execute requires (args, options) - we provide test options
-const opts: ToolExecutionOptions<Record<string, unknown>> = {
+const opts = {
   context: {},
   toolCallId: "test",
   messages: [],

@@ -35,6 +35,9 @@ const result = await agent.generate({
 });
 ```
 
+Using AI SDK 6? Import `stepCountIs` instead of `isStepCount`, and use
+`stopWhen: stepCountIs(20)`.
+
 ## Tools
 
 The `tools` object contains three tools that can be used by AI agents:

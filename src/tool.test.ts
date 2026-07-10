@@ -1,9 +1,8 @@
-import type { ToolExecutionOptions } from "ai";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CommandResult } from "./types.js";
 
 // AI SDK tool execute requires (args, options) - we provide test options
-const opts: ToolExecutionOptions<Record<string, unknown>> = {
+const opts = {
   context: {},
   toolCallId: "test",
   messages: [],

@@ -1,12 +1,11 @@
 // Excluded from pnpm test. Use pnpm test:vercel to run these tests.
 import { Sandbox } from "@vercel/sandbox";
-import type { ToolExecutionOptions } from "ai";
 import { afterAll, assert, beforeAll, describe, expect, it } from "vitest";
 import { createBashTool } from "./tool.js";
 import type { CommandResult } from "./types.js";
 
 // AI SDK tool execute requires (args, options) - we provide test options
-const opts: ToolExecutionOptions<Record<string, unknown>> = {
+const opts = {
   context: {},
   toolCallId: "test",
   messages: [],

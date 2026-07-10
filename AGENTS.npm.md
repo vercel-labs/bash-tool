@@ -40,6 +40,9 @@ const result = await agent.generate({
 });
 ```
 
+With AI SDK 6, import `stepCountIs` instead of `isStepCount`, and use
+`stopWhen: stepCountIs(20)`.
+
 ## Key Behaviors
 
 1. **Default sandbox is just-bash** - Install `just-bash` or provide your own sandbox
