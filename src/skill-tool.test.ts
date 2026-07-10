@@ -6,7 +6,11 @@ import { experimental_createSkillTool as createSkillTool } from "./skill-tool.js
 import { createBashTool } from "./tool.js";
 
 // AI SDK tool execute requires (args, options) - we provide test options
-const opts: ToolExecutionOptions = { toolCallId: "test", messages: [] };
+const opts: ToolExecutionOptions<Record<string, unknown>> = {
+  context: {},
+  toolCallId: "test",
+  messages: [],
+};
 
 // Helper types for test assertions
 interface SkillResult {

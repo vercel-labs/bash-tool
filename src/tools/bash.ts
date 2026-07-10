@@ -1,4 +1,4 @@
-import { tool } from "ai";
+import { type Tool, tool } from "ai";
 import { BashTransformPipeline, TeePlugin } from "just-bash";
 import { z } from "zod";
 import type {
@@ -6,6 +6,7 @@ import type {
   AfterBashCallOutput,
   BeforeBashCallInput,
   BeforeBashCallOutput,
+  CommandResult,
   Sandbox,
 } from "../types.js";
 
@@ -129,7 +130,9 @@ function generateDescription(options: CreateBashToolOptions): string {
   return lines.join("\n").trim();
 }
 
-export function createBashExecuteTool(options: CreateBashToolOptions) {
+export function createBashExecuteTool(
+  options: CreateBashToolOptions,
+): Tool<z.infer<typeof bashSchema>, CommandResult> {
   const {
     sandbox,
     cwd,

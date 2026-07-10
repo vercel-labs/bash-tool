@@ -71,7 +71,7 @@ export interface LanguageModel {}
 
 export type StopCondition<T> = any;
 
-export function stepCountIs(count: number): StopCondition<any>;
+export function isStepCount(count: number): StopCondition<any>;
 
 export class ToolLoopAgent<T = any> {
   constructor(opts: {
@@ -141,8 +141,8 @@ export class Bash {
       }
       assumedImports.push(`import { ${imports.join(", ")} } from "bash-tool";`);
     }
-    if (code.includes("ToolLoopAgent") || code.includes("stepCountIs")) {
-      assumedImports.push('import { ToolLoopAgent, stepCountIs } from "ai";');
+    if (code.includes("ToolLoopAgent") || code.includes("isStepCount")) {
+      assumedImports.push('import { isStepCount, ToolLoopAgent } from "ai";');
     }
     if (code.includes("LanguageModel")) {
       assumedImports.push('import type { LanguageModel } from "ai";');

@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { tool } from "ai";
+import { type Tool, tool } from "ai";
 import { z } from "zod";
 import { extractBody } from "../skills/parser.js";
 import type { Skill } from "../skills/types.js";
@@ -13,6 +13,22 @@ interface CreateSkillToolOptions {
   /** Registry of discovered skills */
   skills: Skill[];
 }
+
+type SkillToolOutput =
+  | {
+      error: string;
+      success: false;
+    }
+  | {
+      files: string[];
+      instructions: string;
+      skill: {
+        description: string;
+        name: string;
+        path: string;
+      };
+      success: true;
+    };
 
 function generateDescription(skills: Skill[]): string {
   const lines: string[] = [
@@ -40,7 +56,9 @@ function generateDescription(skills: Skill[]): string {
   return lines.join("\n");
 }
 
-export function createSkillTool(options: CreateSkillToolOptions) {
+export function createSkillTool(
+  options: CreateSkillToolOptions,
+): Tool<z.infer<typeof skillSchema>, SkillToolOutput> {
   const { skills } = options;
 
   // Create a map for quick lookup

@@ -1,5 +1,5 @@
 import nodePath from "node:path";
-import { tool } from "ai";
+import { type Tool, tool } from "ai";
 import { z } from "zod";
 import type { Sandbox } from "../types.js";
 
@@ -14,7 +14,9 @@ interface CreateWriteFileToolOptions {
   cwd: string;
 }
 
-export function createWriteFileTool(options: CreateWriteFileToolOptions) {
+export function createWriteFileTool(
+  options: CreateWriteFileToolOptions,
+): Tool<z.infer<typeof writeFileSchema>, { success: true }> {
   const { sandbox, cwd } = options;
 
   return tool({

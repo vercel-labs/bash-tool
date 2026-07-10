@@ -1,5 +1,5 @@
 import nodePath from "node:path";
-import { tool } from "ai";
+import { type Tool, tool } from "ai";
 import { z } from "zod";
 import type { Sandbox } from "../types.js";
 
@@ -13,7 +13,9 @@ interface CreateReadFileToolOptions {
   cwd: string;
 }
 
-export function createReadFileTool(options: CreateReadFileToolOptions) {
+export function createReadFileTool(
+  options: CreateReadFileToolOptions,
+): Tool<z.infer<typeof readFileSchema>, { content: string }> {
   const { sandbox, cwd } = options;
 
   return tool({

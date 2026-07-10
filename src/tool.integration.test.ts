@@ -7,7 +7,11 @@ import { createBashTool } from "./tool.js";
 import type { CommandResult } from "./types.js";
 
 // AI SDK tool execute requires (args, options) - we provide test options
-const opts: ToolExecutionOptions = { toolCallId: "test", messages: [] };
+const opts: ToolExecutionOptions<Record<string, unknown>> = {
+  context: {},
+  toolCallId: "test",
+  messages: [],
+};
 
 /**
  * Integration tests that verify the documented bash commands work correctly

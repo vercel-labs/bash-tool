@@ -14,7 +14,7 @@ For full VM support, install [`@vercel/sandbox`](https://vercel.com/docs/vercel-
 
 ```typescript
 import { createBashTool } from "bash-tool";
-import { ToolLoopAgent, stepCountIs } from "ai";
+import { isStepCount, ToolLoopAgent } from "ai";
 
 const { tools } = await createBashTool({
   files: {
@@ -27,7 +27,7 @@ const agent = new ToolLoopAgent({
   model: yourModel,
   tools,
   // Or use just the bash tool as tools: {bash: tools.bash}
-  stopWhen: stepCountIs(20),
+  stopWhen: isStepCount(20),
 });
 
 const result = await agent.generate({

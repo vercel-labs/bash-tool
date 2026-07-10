@@ -6,7 +6,11 @@ import { createBashTool } from "./tool.js";
 import type { CommandResult } from "./types.js";
 
 // AI SDK tool execute requires (args, options) - we provide test options
-const opts: ToolExecutionOptions = { toolCallId: "test", messages: [] };
+const opts: ToolExecutionOptions<Record<string, unknown>> = {
+  context: {},
+  toolCallId: "test",
+  messages: [],
+};
 
 /** Generate a unique test directory to avoid race conditions between tests */
 function uniqueDir(): string {
