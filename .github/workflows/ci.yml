@@ -34,10 +34,12 @@ jobs:
           cache: pnpm
 
       - name: Select AI SDK ${{ matrix.ai-sdk-major }}
-        run: pnpm pkg set "devDependencies.ai=${{ matrix.ai-version }}"
+        env:
+          AI_VERSION: ${{ matrix.ai-version }}
+        run: node -e "const fs=require('node:fs'),p=require('./package.json');p.devDependencies.ai=process.env.AI_VERSION;fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')"
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Lint
         run: pnpm lint
