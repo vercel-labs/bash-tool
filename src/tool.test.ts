@@ -337,6 +337,113 @@ describe("createBashTool", () => {
     expect(result.stdout).toBe("custom");
   });
 
+  it("creates a provided sandbox only when a tool first uses it", async () => {
+    const calls: string[] = [];
+    const customSandbox = {
+      executeCommand: vi.fn().mockImplementation(async () => {
+        calls.push("execute");
+        return { stdout: "lazy", stderr: "", exitCode: 0 };
+      }),
+      readFile: vi.fn().mockResolvedValue("lazy content"),
+      writeFiles: vi.fn().mockImplementation(async () => {
+        calls.push("write");
+      }),
+    };
+    const sandboxProvider = vi.fn().mockImplementation(async () => {
+      calls.push("create");
+      return customSandbox;
+    });
+
+    const { tools, sandbox } = await createBashTool({
+      sandbox: sandboxProvider,
+      files: { "test.txt": "content" },
+    });
+
+    expect(sandboxProvider).not.toHaveBeenCalled();
+    expect(customSandbox.writeFiles).not.toHaveBeenCalled();
+
+    assert(tools.bash.execute, "bash.execute should be defined");
+    const result = (await tools.bash.execute(
+      { command: "pwd" },
+      opts,
+    )) as CommandResult;
+
+    expect(result.stdout).toBe("lazy");
+    expect(calls).toEqual(["create", "write", "execute"]);
+    expect(customSandbox.writeFiles).toHaveBeenCalledWith([
+      { path: "/workspace/test.txt", content: Buffer.from("content") },
+    ]);
+
+    await sandbox.readFile("/workspace/test.txt");
+    assert(tools.writeFile.execute, "writeFile.execute should be defined");
+    await tools.writeFile.execute(
+      { path: "other.txt", content: "other" },
+      opts,
+    );
+
+    expect(sandboxProvider).toHaveBeenCalledTimes(1);
+  });
+
+  it("wraps a lazily created Vercel sandbox", async () => {
+    const vercelSandbox = {
+      sandboxId: "sandbox_123",
+      runCommand: vi.fn().mockResolvedValue({
+        exitCode: 0,
+        stdout: vi.fn().mockResolvedValue("vercel"),
+        stderr: vi.fn().mockResolvedValue(""),
+      }),
+      readFile: vi.fn().mockResolvedValue(null),
+      writeFiles: vi.fn().mockResolvedValue(undefined),
+    };
+    const sandboxProvider = vi.fn().mockResolvedValue(vercelSandbox);
+
+    const { tools } = await createBashTool({
+      sandbox: sandboxProvider,
+      destination: "/vercel/sandbox/workspace",
+      files: { "test.txt": "content" },
+    });
+
+    expect(sandboxProvider).not.toHaveBeenCalled();
+
+    assert(tools.bash.execute, "bash.execute should be defined");
+    const result = (await tools.bash.execute(
+      { command: "pwd" },
+      opts,
+    )) as CommandResult;
+
+    expect(result.stdout).toBe("vercel");
+    expect(vercelSandbox.writeFiles).toHaveBeenCalledWith([
+      {
+        path: "/vercel/sandbox/workspace/test.txt",
+        content: Buffer.from("content"),
+      },
+    ]);
+    expect(vercelSandbox.runCommand).toHaveBeenCalledWith("bash", [
+      "-c",
+      'cd "/vercel/sandbox/workspace" && pwd',
+    ]);
+    expect(sandboxProvider).toHaveBeenCalledTimes(1);
+  });
+
+  it("validates lazy sandbox files before creating the sandbox", async () => {
+    const sandboxProvider = vi.fn();
+
+    await expect(
+      createBashTool({
+        sandbox: sandboxProvider,
+        files: {
+          "one.txt": "one",
+          "two.txt": "two",
+        },
+        maxFiles: 1,
+      }),
+    ).rejects.toThrow(
+      /Too many files to upload: 2 files exceeds the limit of 1/,
+    );
+
+    expect(sandboxProvider).not.toHaveBeenCalled();
+  });
+
   it("writes files in batches of 20 to custom sandbox", async () => {
     const customSandbox = {
       executeCommand: vi

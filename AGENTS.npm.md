@@ -70,6 +70,27 @@ const { tools } = await createBashTool({ sandbox: vm });
 // Call vm.stop() when done
 ```
 
+### create a sandbox only when a tool runs
+
+```typescript
+import { Sandbox } from "@vercel/sandbox";
+
+const { tools } = await createBashTool({
+  sandbox: () => Sandbox.create(),
+  destination: "/vercel/sandbox/workspace",
+});
+```
+
+the provider runs once, when `bash`, `readFile`, `writeFile`, or a returned
+sandbox method is first used. files are uploaded after the provider resolves
+and before the requested operation runs.
+
+because the sandbox type is unknown until then, lazy providers default to
+`/workspace`. set `destination` for sandboxes with a different working
+directory. automatic tool discovery is also skipped to preserve lazy
+initialization. use `promptOptions.toolPrompt` to add sandbox-specific tool
+hints.
+
 ### Persistent sandbox across serverless invocations
 
 ```typescript
