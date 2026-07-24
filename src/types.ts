@@ -63,6 +63,16 @@ export interface PromptOptions {
   toolPrompt?: string;
 }
 
+export type SandboxInstance = Sandbox | VercelSandbox | JustBashLike;
+
+/**
+ * creates a sandbox when one of the returned tools first needs it.
+ *
+ * the provider is called at most once and may return any supported sandbox
+ * instance.
+ */
+export type SandboxProvider = () => SandboxInstance | Promise<SandboxInstance>;
+
 export interface CreateBashToolOptions {
   /**
    * Destination directory on the sandbox for files.
@@ -95,9 +105,14 @@ export interface CreateBashToolOptions {
   /**
    * Override the default just-bash sandbox.
    * Accepts a @vercel/sandbox instance, just-bash Bash instance,
-   * or any object implementing Sandbox.
+   * any object implementing Sandbox, or a provider for lazy initialization.
+   *
+   * lazy providers are called at most once, when a returned tool or sandbox
+   * method is first used. automatic tool discovery is skipped until then, so
+   * provide promptOptions.toolPrompt when tool-specific prompt hints are
+   * needed.
    */
-  sandbox?: Sandbox | VercelSandbox | JustBashLike;
+  sandbox?: SandboxInstance | SandboxProvider;
 
   /**
    * Additional instructions to append to tool descriptions.

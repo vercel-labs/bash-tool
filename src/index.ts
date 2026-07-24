@@ -30,5 +30,7 @@ export type {
   CreateBashToolOptions,
   PromptOptions,
   Sandbox,
+  SandboxInstance,
+  SandboxProvider,
   VercelSandboxInstance,
 } from "./types.js";

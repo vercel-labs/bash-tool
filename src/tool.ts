@@ -10,12 +10,65 @@ import { createBashExecuteTool } from "./tools/bash.js";
 import { createReadFileTool } from "./tools/read-file.js";
 import { createWriteFileTool } from "./tools/write-file.js";
 import { createToolPrompt } from "./tools-prompt.js";
-import type { BashToolkit, CreateBashToolOptions, Sandbox } from "./types.js";
+import type {
+  BashToolkit,
+  CreateBashToolOptions,
+  Sandbox,
+  SandboxInstance,
+  SandboxProvider,
+} from "./types.js";
 
 const DEFAULT_DESTINATION = "/workspace";
 const VERCEL_SANDBOX_DESTINATION = "/vercel/sandbox/workspace";
 const WRITE_BATCH_SIZE = 20;
 const DEFAULT_MAX_FILES = 1000;
+
+function isSandboxProvider(
+  sandbox: CreateBashToolOptions["sandbox"],
+): sandbox is SandboxProvider {
+  return typeof sandbox === "function";
+}
+
+function normalizeSandbox(sandbox: SandboxInstance): {
+  sandbox: Sandbox;
+  usingJustBash: boolean;
+} {
+  if (isVercelSandbox(sandbox)) {
+    return { sandbox: wrapVercelSandbox(sandbox), usingJustBash: false };
+  }
+
+  if (isJustBash(sandbox)) {
+    return { sandbox: wrapJustBash(sandbox), usingJustBash: true };
+  }
+
+  return { sandbox: sandbox as Sandbox, usingJustBash: false };
+}
+
+async function writeFilesToSandbox(options: {
+  sandbox: Sandbox;
+  destination: string;
+  files: CreateBashToolOptions["files"];
+  uploadDirectory: CreateBashToolOptions["uploadDirectory"];
+}): Promise<void> {
+  const { sandbox, destination, files, uploadDirectory } = options;
+  let batch: Array<{ path: string; content: Buffer }> = [];
+
+  for await (const file of streamFiles({ files, uploadDirectory })) {
+    batch.push({
+      path: path.posix.join(destination, file.path),
+      content: file.content,
+    });
+
+    if (batch.length >= WRITE_BATCH_SIZE) {
+      await sandbox.writeFiles(batch);
+      batch = [];
+    }
+  }
+
+  if (batch.length > 0) {
+    await sandbox.writeFiles(batch);
+  }
+}
 
 /**
  * Creates a bash tool with tools for AI agents.
@@ -46,9 +99,13 @@ const DEFAULT_MAX_FILES = 1000;
 export async function createBashTool(
   options: CreateBashToolOptions = {},
 ): Promise<BashToolkit> {
+  const lazySandboxProvider = isSandboxProvider(options.sandbox)
+    ? options.sandbox
+    : undefined;
+
   // Determine default destination based on sandbox type
   const defaultDestination =
-    options.sandbox && isVercelSandbox(options.sandbox)
+    options.sandbox && !lazySandboxProvider && isVercelSandbox(options.sandbox)
       ? VERCEL_SANDBOX_DESTINATION
       : DEFAULT_DESTINATION;
   const destination = options.destination ?? defaultDestination;
@@ -63,17 +120,51 @@ export async function createBashTool(
 
   let fileWrittenPromise: Promise<void> | undefined;
 
-  if (options.sandbox) {
-    // External sandbox provided - stream files and write in batches
-    // Check @vercel/sandbox first (more specific check)
-    if (isVercelSandbox(options.sandbox)) {
-      sandbox = wrapVercelSandbox(options.sandbox);
-    } else if (isJustBash(options.sandbox)) {
-      sandbox = wrapJustBash(options.sandbox);
-      usingJustBash = true;
-    } else {
-      sandbox = options.sandbox as Sandbox;
+  if (lazySandboxProvider) {
+    fileList = await getFilePaths({
+      files: options.files,
+      uploadDirectory: options.uploadDirectory,
+    });
+
+    if (maxFiles > 0 && fileList.length > maxFiles) {
+      throw new Error(
+        `Too many files to upload: ${fileList.length} files exceeds the limit of ${maxFiles}. ` +
+          `Either increase maxFiles, use a more restrictive include pattern in uploadDirectory, ` +
+          `or write files to the sandbox yourself before calling createBashTool.`,
+      );
     }
+
+    let sandboxPromise: Promise<Sandbox> | undefined;
+    const getSandbox = (): Promise<Sandbox> => {
+      sandboxPromise ??= (async () => {
+        const resolved = normalizeSandbox(await lazySandboxProvider());
+        await writeFilesToSandbox({
+          sandbox: resolved.sandbox,
+          destination,
+          files: options.files,
+          uploadDirectory: options.uploadDirectory,
+        });
+        return resolved.sandbox;
+      })();
+      return sandboxPromise;
+    };
+
+    sandbox = {
+      async executeCommand(command) {
+        return (await getSandbox()).executeCommand(command);
+      },
+      async readFile(filePath) {
+        return (await getSandbox()).readFile(filePath);
+      },
+      async writeFiles(files) {
+        return (await getSandbox()).writeFiles(files);
+      },
+    };
+  } else if (options.sandbox && !isSandboxProvider(options.sandbox)) {
+    // External sandbox provided - stream files and write in batches
+    const normalized = normalizeSandbox(options.sandbox);
+    sandbox = normalized.sandbox;
+    usingJustBash = normalized.usingJustBash;
 
     // Get file paths for tool prompt (without loading content)
     fileList = await getFilePaths({
@@ -91,29 +182,12 @@ export async function createBashTool(
     }
 
     // Stream files and write in batches to avoid memory issues
-    fileWrittenPromise = (async () => {
-      let batch: Array<{ path: string; content: Buffer }> = [];
-
-      for await (const file of streamFiles({
-        files: options.files,
-        uploadDirectory: options.uploadDirectory,
-      })) {
-        batch.push({
-          path: path.posix.join(destination, file.path),
-          content: file.content,
-        });
-
-        if (batch.length >= WRITE_BATCH_SIZE) {
-          await sandbox.writeFiles(batch);
-          batch = [];
-        }
-      }
-
-      // Write remaining files
-      if (batch.length > 0) {
-        await sandbox.writeFiles(batch);
-      }
-    })();
+    fileWrittenPromise = writeFilesToSandbox({
+      sandbox,
+      destination,
+      files: options.files,
+      uploadDirectory: options.uploadDirectory,
+    });
   } else {
     // No external sandbox - use just-bash
     usingJustBash = true;
@@ -183,7 +257,9 @@ export async function createBashTool(
       sandbox,
       filenames: fileList,
       isJustBash: usingJustBash,
-      toolPrompt: options.promptOptions?.toolPrompt,
+      toolPrompt: lazySandboxProvider
+        ? (options.promptOptions?.toolPrompt ?? "")
+        : options.promptOptions?.toolPrompt,
     }),
     fileWrittenPromise,
   ]);
