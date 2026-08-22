@@ -2,5 +2,5 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "project": ["src/**/*.ts"],
   "ignore": ["dist/**", "src/**/*.test-d.ts"],
-  "ignoreDependencies": ["just-bash", "@vercel/sandbox"]
+  "ignoreDependencies": ["just-bash", "@vercel/sandbox", "@types/json-schema"]
 }
