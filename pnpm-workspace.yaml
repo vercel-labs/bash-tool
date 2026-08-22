@@ -1,3 +1,6 @@
+packages:
+  - '.'
+
 allowBuilds:
   '@mongodb-js/zstd': true
   esbuild: true
