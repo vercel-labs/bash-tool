@@ -92,6 +92,13 @@ export class Sandbox {
   sandboxId: string;
   static create(): Promise<Sandbox>;
   static get(opts: { sandboxId: string }): Promise<Sandbox>;
+  runCommand(command: string, args?: string[]): Promise<{
+    exitCode: number;
+    stdout(opts?: { signal?: AbortSignal }): Promise<string>;
+    stderr(opts?: { signal?: AbortSignal }): Promise<string>;
+  }>;
+  readFile(file: { path: string }): Promise<NodeJS.ReadableStream | null>;
+  writeFiles(files: Array<{ path: string; content: Buffer }>): Promise<void>;
   stop(): Promise<void>;
 }
 `,

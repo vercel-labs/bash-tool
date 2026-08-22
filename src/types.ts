@@ -1,5 +1,5 @@
-import type { Sandbox as VercelSandbox } from "@vercel/sandbox";
 import type { JustBashLike } from "./sandbox/just-bash.js";
+import type { VercelSandboxLike } from "./sandbox/vercel.js";
 
 export interface CommandResult {
   stdout: string;
@@ -97,7 +97,7 @@ export interface CreateBashToolOptions {
    * Accepts a @vercel/sandbox instance, just-bash Bash instance,
    * or any object implementing Sandbox.
    */
-  sandbox?: Sandbox | VercelSandbox | JustBashLike;
+  sandbox?: Sandbox | VercelSandboxLike | JustBashLike;
 
   /**
    * Additional instructions to append to tool descriptions.
@@ -185,6 +185,7 @@ export interface BashToolkit {
 }
 
 /**
- * Re-export @vercel/sandbox Sandbox type for convenience.
+ * Structural type for the @vercel/sandbox methods used by bash-tool.
+ * This keeps @vercel/sandbox optional for consumers that do not use it.
  */
-export type { Sandbox as VercelSandboxInstance } from "@vercel/sandbox";
+export type { VercelSandboxLike as VercelSandboxInstance } from "./sandbox/vercel.js";
