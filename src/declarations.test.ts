@@ -51,8 +51,12 @@ void options;
       );
 
       await execFileAsync(
-        "pnpm",
-        ["exec", "tsc", "--project", join(tempDir, "tsconfig.json")],
+        process.execPath,
+        [
+          join(repoRoot, "node_modules/typescript/bin/tsc"),
+          "--project",
+          join(tempDir, "tsconfig.json"),
+        ],
         { cwd: repoRoot },
       );
     } finally {
