@@ -12,6 +12,7 @@ export interface JustBashLike {
   }>;
   fs: {
     readFile: (path: string) => Promise<string>;
+    readFileBuffer?: (path: string) => Promise<Uint8Array>;
     writeFile: (path: string, content: string) => Promise<void>;
   };
 }
@@ -91,6 +92,13 @@ export async function createJustBashSandbox(
       return bashEnv.fs.readFile(filePath);
     },
 
+    async readFileBuffer(filePath: string): Promise<Uint8Array> {
+      return (
+        (await bashEnv.fs.readFileBuffer?.(filePath)) ??
+        new TextEncoder().encode(await bashEnv.fs.readFile(filePath))
+      );
+    },
+
     async writeFiles(
       files: Array<{ path: string; content: string | Buffer }>,
     ): Promise<void> {
@@ -131,6 +139,13 @@ export function wrapJustBash(bashInstance: JustBashLike): Sandbox {
 
     async readFile(filePath: string): Promise<string> {
       return bashInstance.fs.readFile(filePath);
+    },
+
+    async readFileBuffer(filePath: string): Promise<Uint8Array> {
+      return (
+        (await bashInstance.fs.readFileBuffer?.(filePath)) ??
+        new TextEncoder().encode(await bashInstance.fs.readFile(filePath))
+      );
     },
 
     async writeFiles(
